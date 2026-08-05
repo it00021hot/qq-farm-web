@@ -29,6 +29,15 @@ export const request = createFlatRequest(
       const Authorization = getAuthorization();
       Object.assign(config.headers, { Authorization });
 
+      try {
+        const tenantId = localStg.get('tenantId');
+        if (tenantId !== null && tenantId !== undefined && String(tenantId) !== '' && String(tenantId) !== '0') {
+          Object.assign(config.headers, { 'X-Tenant-ID': String(tenantId) });
+        }
+      } catch {
+        // ignore
+      }
+
       return config;
     },
     isBackendSuccess(response) {
@@ -104,9 +113,15 @@ export const request = createFlatRequest(
       let message = error.message;
       let backendErrorCode = '';
 
-      // get backend error message and code
-      if (error.code === BACKEND_ERROR_CODE) {
-        message = error.response?.data?.msg || message;
+      // prefer backend envelope msg (HTTP 200 business fail or residual 4xx/5xx with body)
+      const backendMsg = error.response?.data?.msg;
+      const backendCode = error.response?.data?.code;
+      if (backendMsg) {
+        message = backendMsg;
+      }
+      if (backendCode !== undefined && backendCode !== null && backendCode !== '') {
+        backendErrorCode = String(backendCode);
+      } else if (error.code === BACKEND_ERROR_CODE) {
         backendErrorCode = String(error.response?.data?.code || '');
       }
 

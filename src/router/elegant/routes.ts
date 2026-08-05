@@ -47,7 +47,8 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'home',
       i18nKey: 'route.home',
       icon: 'mdi:monitor-dashboard',
-      order: 1
+      order: 1,
+      constant: true
     }
   },
   {
@@ -74,5 +75,70 @@ export const generatedRoutes: GeneratedRoute[] = [
       constant: true,
       hideInMenu: true
     }
+  },
+  {
+    name: 'system',
+    path: '/system',
+    component: 'layout.base',
+    meta: {
+      title: 'system',
+      i18nKey: 'route.system'
+    },
+    children: [
+      {
+        name: 'system_admin',
+        path: '/system/admin',
+        component: 'view.system_admin',
+        meta: {
+          title: 'system_admin',
+          i18nKey: 'route.system_admin'
+        }
+      },
+      {
+        name: 'system_attachment',
+        path: '/system/attachment',
+        component: 'view.system_attachment',
+        meta: {
+          title: 'system_attachment',
+          i18nKey: 'route.system_attachment'
+        }
+      },
+      {
+        name: 'system_menu',
+        path: '/system/menu',
+        component: 'view.system_menu',
+        meta: {
+          title: 'system_menu',
+          i18nKey: 'route.system_menu'
+        }
+      },
+      {
+        name: 'system_permission',
+        path: '/system/permission',
+        component: 'view.system_permission',
+        meta: {
+          title: 'system_permission',
+          i18nKey: 'route.system_permission'
+        }
+      },
+      {
+        name: 'system_role',
+        path: '/system/role',
+        component: 'view.system_role',
+        meta: {
+          title: 'system_role',
+          i18nKey: 'route.system_role'
+        }
+      },
+      {
+        name: 'system_tenant',
+        path: '/system/tenant',
+        component: 'view.system_tenant',
+        meta: {
+          title: 'system_tenant',
+          i18nKey: 'route.system_tenant'
+        }
+      }
+    ]
   }
 ];

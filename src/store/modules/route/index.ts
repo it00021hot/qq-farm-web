@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { useBoolean } from '@sa/hooks';
 import type { CustomRoute, ElegantConstRoute, LastLevelRouteKey, RouteKey, RouteMap } from '@elegant-router/types';
 import { router } from '@/router';
-import { fetchGetConstantRoutes, fetchGetUserRoutes, fetchIsRouteExist } from '@/service/api';
+import { fetchGetUserRoutes } from '@/service/api';
 import { SetupStoreId } from '@/enum';
 import { createStaticRoutes, getAuthVueRoutes } from '@/router/routes';
 import { ROOT_ROUTE } from '@/router/routes/builtin';
@@ -155,18 +155,8 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
 
     const staticRoute = createStaticRoutes();
 
-    if (authRouteMode.value === 'static') {
-      addConstantRoutes(staticRoute.constantRoutes);
-    } else {
-      const { data, error } = await fetchGetConstantRoutes();
-
-      if (!error) {
-        addConstantRoutes(data);
-      } else {
-        // if fetch constant routes failed, use static constant routes
-        addConstantRoutes(staticRoute.constantRoutes);
-      }
-    }
+    // dynamic 模式也使用本地常量路由（login/403/404/home 等）
+    addConstantRoutes(staticRoute.constantRoutes);
 
     handleConstantAndAuthRoutes();
 
@@ -304,9 +294,8 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
       return isRouteExistByRouteName(routeName, staticAuthRoutes);
     }
 
-    const { data } = await fetchIsRouteExist(routeName);
-
-    return data;
+    // dynamic：用本地已加载的常量/权限路由判断；避免错误的「存在」探针把未注册页打成 403
+    return isRouteExistByRouteName(routeName, [...constantRoutes.value, ...authRoutes.value]);
   }
 
   /**

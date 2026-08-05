@@ -19,7 +19,7 @@ export function fetchLogin(userName: string, password: string) {
 
 /** Get user info */
 export function fetchGetUserInfo() {
-  return request<Api.Auth.UserInfo>({ url: '/auth/getUserInfo' });
+  return request<Api.Auth.UserInfo>({ url: '/auth/info' });
 }
 
 /**
@@ -29,7 +29,7 @@ export function fetchGetUserInfo() {
  */
 export function fetchRefreshToken(refreshToken: string) {
   return request<Api.Auth.LoginToken>({
-    url: '/auth/refreshToken',
+    url: '/auth/refresh',
     method: 'post',
     data: {
       refreshToken
@@ -37,12 +37,16 @@ export function fetchRefreshToken(refreshToken: string) {
   });
 }
 
-/**
- * return custom backend error
- *
- * @param code error code
- * @param msg error message
- */
-export function fetchCustomBackendError(code: string, msg: string) {
-  return request({ url: '/auth/error', params: { code, msg } });
+/** Logout */
+export function fetchLogout() {
+  return request({ url: '/auth/logout', method: 'post' });
+}
+
+/** Change current user password */
+export function fetchChangePassword(data: Api.Auth.ChangePasswordParams) {
+  return request({
+    url: '/auth/password',
+    method: 'post',
+    data
+  });
 }

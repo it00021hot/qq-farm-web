@@ -9,6 +9,7 @@ import { SetupStoreId } from '@/enum';
 import { $t } from '@/locales';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
+import { useTenantStore } from '../tenant';
 import { clearAuthStorage, getToken } from './shared';
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
@@ -25,7 +26,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     userId: '',
     userName: '',
     roles: [],
-    buttons: []
+    buttons: [],
+    tenantId: 0
   });
 
   /** is super role in static route */
@@ -151,6 +153,11 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     if (!error) {
       // update store
       Object.assign(userInfo, info);
+      const tenantStore = useTenantStore();
+      tenantStore.initFromAuth();
+      if (tenantStore.isPlatformUser) {
+        await tenantStore.loadTenantOptions();
+      }
 
       return true;
     }

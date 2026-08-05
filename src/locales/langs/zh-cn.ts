@@ -33,6 +33,12 @@ const local: App.I18n.Schema = {
     lookForward: '敬请期待',
     modify: '修改',
     modifySuccess: '修改成功',
+    changePassword: '修改密码',
+    oldPassword: '旧密码',
+    newPassword: '新密码',
+    confirmNewPassword: '确认新密码',
+    oldPasswordRequired: '请输入旧密码',
+    changePasswordSuccess: '密码已修改，请重新登录',
     noData: '无数据',
     operate: '操作',
     pleaseCheckValue: '请检查输入的值是否合法',
@@ -225,7 +231,14 @@ const local: App.I18n.Schema = {
     404: '页面不存在',
     500: '服务器错误',
     'iframe-page': '外链页面',
-    home: '首页'
+    home: '首页',
+    system: '系统管理',
+    system_tenant: '租户管理',
+    system_admin: '管理员',
+    system_role: '角色管理',
+    system_menu: '菜单管理',
+    system_permission: '权限管理',
+    system_attachment: '附件管理'
   },
   page: {
     login: {
@@ -302,6 +315,125 @@ const local: App.I18n.Schema = {
         desc5: 'Soybean 刚才把工作台页面随便写了一些，凑合能看了！'
       },
       creativity: '创意'
+    },
+    system: {
+      common: {
+        status: {
+          enable: '启用',
+          disable: '禁用',
+          normal: '正常',
+          deleted: '已删除'
+        }
+      },
+      tenant: {
+        title: '租户管理',
+        keyword: '关键词',
+        code: '租户编码',
+        name: '租户名称',
+        status: '状态',
+        maxUsers: '最大用户数',
+        expireAt: '过期时间',
+        contactName: '联系人',
+        contactPhone: '联系电话',
+        remark: '备注',
+        adminAccount: '管理员账号',
+        adminPassword: '管理员密码',
+        adminNickName: '管理员昵称',
+        addTenant: '新增租户',
+        editTenant: '编辑租户',
+        toggleStatusConfirm: '确认切换租户状态吗？',
+        switchPlaceholder: '切换租户',
+        selectRequired: '请先在顶栏选择租户'
+      },
+      admin: {
+        title: '管理员',
+        keyword: '关键词',
+        account: '账号',
+        password: '密码',
+        newPassword: '新密码',
+        nickName: '昵称',
+        realName: '姓名',
+        phone: '手机号',
+        email: '邮箱',
+        roles: '角色',
+        tenants: '绑定租户',
+        status: '状态',
+        addAdmin: '新增管理员',
+        editAdmin: '编辑管理员',
+        addPlatformUser: '新增平台用户',
+        toggleStatusConfirm: '确认切换管理员状态吗？'
+      },
+      role: {
+        title: '角色管理',
+        name: '角色名称',
+        code: '角色编码',
+        desc: '描述',
+        parentId: '上级角色',
+        rootParent: '顶级角色',
+        typeLabel: '角色类型',
+        status: '状态',
+        auth: '授权',
+        addRole: '新增角色',
+        editRole: '编辑角色',
+        roleType: {
+          platform: '平台专用',
+          tenant: '可赋给租户'
+        }
+      },
+      menu: {
+        title: '菜单管理',
+        name: '名称',
+        alias: '别名',
+        desc: '描述',
+        parentId: '上级菜单',
+        rootParent: '顶级菜单',
+        typeLabel: '资源类型',
+        fUrl: '前端路径',
+        bUrl: '后端路径',
+        methods: '请求方法',
+        path: '路由路径',
+        icon: '图标',
+        hideInMenu: '侧栏显示',
+        hideInMenuShow: '显示',
+        hideInMenuHide: '隐藏',
+        sortOrder: '排序',
+        status: '状态',
+        addMenu: '新增菜单',
+        editMenu: '编辑菜单',
+        resourceType: {
+          directory: '目录',
+          menu: '菜单',
+          button: '按钮'
+        }
+      },
+      permission: {
+        title: '权限管理',
+        apiList: 'API 列表',
+        rolePolicies: '角色策略',
+        hint: 'API 列表是系统可绑定的后端路由；角色策略只读展示某角色在 Casbin 中的 path/method 规则，用于排查授权。授权请在「角色管理」里配置菜单。',
+        method: '方法',
+        path: '路径',
+        name: '名称',
+        source: '来源',
+        ptype: '策略类型',
+        roleId: '角色',
+        roleIdRequired: '请选择角色',
+        reload: '重载权限',
+        reloadSuccess: '权限重载成功'
+      },
+      attachment: {
+        title: '附件管理',
+        keyword: '关键词',
+        originName: '原始文件名',
+        extension: '扩展名',
+        size: '大小',
+        status: '状态',
+        upload: '上传',
+        uploadSuccess: '上传成功',
+        preview: '预览',
+        markDeleted: '标记删除',
+        markDeletedConfirm: '确认标记为已删除吗？'
+      }
     }
   },
   form: {

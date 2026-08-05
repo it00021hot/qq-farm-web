@@ -33,6 +33,12 @@ const local: App.I18n.Schema = {
     lookForward: 'Coming soon',
     modify: 'Modify',
     modifySuccess: 'Modify Success',
+    changePassword: 'Change Password',
+    oldPassword: 'Old Password',
+    newPassword: 'New Password',
+    confirmNewPassword: 'Confirm New Password',
+    oldPasswordRequired: 'Please enter old password',
+    changePasswordSuccess: 'Password changed, please sign in again',
     noData: 'No Data',
     operate: 'Operate',
     pleaseCheckValue: 'Please check whether the value is valid',
@@ -229,7 +235,14 @@ const local: App.I18n.Schema = {
     404: 'Page Not Found',
     500: 'Server Error',
     'iframe-page': 'Iframe',
-    home: 'Home'
+    home: 'Home',
+    system: 'System',
+    system_tenant: 'Tenant',
+    system_admin: 'Admin',
+    system_role: 'Role',
+    system_menu: 'Menu',
+    system_permission: 'Permission',
+    system_attachment: 'Attachment'
   },
   page: {
     login: {
@@ -306,6 +319,125 @@ const local: App.I18n.Schema = {
         desc5: 'Soybean just wrote some of the workbench pages casually, and it was enough to see!'
       },
       creativity: 'Creativity'
+    },
+    system: {
+      common: {
+        status: {
+          enable: 'Enable',
+          disable: 'Disable',
+          normal: 'Normal',
+          deleted: 'Deleted'
+        }
+      },
+      tenant: {
+        title: 'Tenant Management',
+        keyword: 'Keyword',
+        code: 'Tenant Code',
+        name: 'Tenant Name',
+        status: 'Status',
+        maxUsers: 'Max Users',
+        expireAt: 'Expire At',
+        contactName: 'Contact Name',
+        contactPhone: 'Contact Phone',
+        remark: 'Remark',
+        adminAccount: 'Admin Account',
+        adminPassword: 'Admin Password',
+        adminNickName: 'Admin Nickname',
+        addTenant: 'Add Tenant',
+        editTenant: 'Edit Tenant',
+        toggleStatusConfirm: 'Are you sure to toggle tenant status?',
+        switchPlaceholder: 'Switch tenant',
+        selectRequired: 'Please select a tenant in the header first'
+      },
+      admin: {
+        title: 'Admin Users',
+        keyword: 'Keyword',
+        account: 'Account',
+        password: 'Password',
+        newPassword: 'New Password',
+        nickName: 'Nickname',
+        realName: 'Real Name',
+        phone: 'Phone',
+        email: 'Email',
+        roles: 'Roles',
+        tenants: 'Tenants',
+        status: 'Status',
+        addAdmin: 'Add Admin',
+        editAdmin: 'Edit Admin',
+        addPlatformUser: 'Add Platform User',
+        toggleStatusConfirm: 'Are you sure to toggle admin status?'
+      },
+      role: {
+        title: 'Role Management',
+        name: 'Role Name',
+        code: 'Role Code',
+        desc: 'Description',
+        parentId: 'Parent Role',
+        rootParent: 'Root Role',
+        typeLabel: 'Role Type',
+        status: 'Status',
+        auth: 'Authorize',
+        addRole: 'Add Role',
+        editRole: 'Edit Role',
+        roleType: {
+          platform: 'Platform Only',
+          tenant: 'Tenant Assignable'
+        }
+      },
+      menu: {
+        title: 'Menu Management',
+        name: 'Name',
+        alias: 'Alias',
+        desc: 'Description',
+        parentId: 'Parent Menu',
+        rootParent: 'Root Menu',
+        typeLabel: 'Resource Type',
+        fUrl: 'Frontend URL',
+        bUrl: 'Backend URL',
+        methods: 'Methods',
+        path: 'Route Path',
+        icon: 'Icon',
+        hideInMenu: 'Sidebar',
+        hideInMenuShow: 'Show',
+        hideInMenuHide: 'Hide',
+        sortOrder: 'Sort Order',
+        status: 'Status',
+        addMenu: 'Add Menu',
+        editMenu: 'Edit Menu',
+        resourceType: {
+          directory: 'Directory',
+          menu: 'Menu',
+          button: 'Button'
+        }
+      },
+      permission: {
+        title: 'Permission Management',
+        apiList: 'API List',
+        rolePolicies: 'Role Policies',
+        hint: 'API List shows bindable backend routes. Role Policies is a read-only Casbin path/method view for troubleshooting. Configure menu auth in Role Management.',
+        method: 'Method',
+        path: 'Path',
+        name: 'Name',
+        source: 'Source',
+        ptype: 'Policy Type',
+        roleId: 'Role',
+        roleIdRequired: 'Please select a role',
+        reload: 'Reload Permission',
+        reloadSuccess: 'Permission reloaded successfully'
+      },
+      attachment: {
+        title: 'Attachment Management',
+        keyword: 'Keyword',
+        originName: 'Original Name',
+        extension: 'Extension',
+        size: 'Size',
+        status: 'Status',
+        upload: 'Upload',
+        uploadSuccess: 'Upload successful',
+        preview: 'Preview',
+        markDeleted: 'Mark Deleted',
+        markDeletedConfirm: 'Are you sure to mark as deleted?'
+      }
     }
   },
   form: {

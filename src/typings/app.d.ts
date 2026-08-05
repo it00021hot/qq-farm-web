@@ -345,6 +345,12 @@ declare namespace App {
         lookForward: string;
         modify: string;
         modifySuccess: string;
+        changePassword: string;
+        oldPassword: string;
+        newPassword: string;
+        confirmNewPassword: string;
+        oldPasswordRequired: string;
+        changePasswordSuccess: string;
         noData: string;
         operate: string;
         pleaseCheckValue: string;
@@ -554,6 +560,125 @@ declare namespace App {
             desc5: string;
           };
           creativity: string;
+        };
+        system: {
+          common: {
+            status: {
+              enable: string;
+              disable: string;
+              normal: string;
+              deleted: string;
+            };
+          };
+          tenant: {
+            title: string;
+            keyword: string;
+            code: string;
+            name: string;
+            status: string;
+            maxUsers: string;
+            expireAt: string;
+            contactName: string;
+            contactPhone: string;
+            remark: string;
+            adminAccount: string;
+            adminPassword: string;
+            adminNickName: string;
+            addTenant: string;
+            editTenant: string;
+            toggleStatusConfirm: string;
+            switchPlaceholder: string;
+            selectRequired: string;
+          };
+          admin: {
+            title: string;
+            keyword: string;
+            account: string;
+            password: string;
+            newPassword: string;
+            nickName: string;
+            realName: string;
+            phone: string;
+            email: string;
+            roles: string;
+            tenants: string;
+            status: string;
+            addAdmin: string;
+            editAdmin: string;
+            addPlatformUser: string;
+            toggleStatusConfirm: string;
+          };
+          role: {
+            title: string;
+            name: string;
+            code: string;
+            desc: string;
+            parentId: string;
+            rootParent: string;
+            typeLabel: string;
+            status: string;
+            auth: string;
+            addRole: string;
+            editRole: string;
+            roleType: {
+              platform: string;
+              tenant: string;
+            };
+          };
+          menu: {
+            title: string;
+            name: string;
+            alias: string;
+            desc: string;
+            parentId: string;
+            rootParent: string;
+            typeLabel: string;
+            fUrl: string;
+            bUrl: string;
+            methods: string;
+            path: string;
+            icon: string;
+            hideInMenu: string;
+            hideInMenuShow: string;
+            hideInMenuHide: string;
+            sortOrder: string;
+            status: string;
+            addMenu: string;
+            editMenu: string;
+            resourceType: {
+              directory: string;
+              menu: string;
+              button: string;
+            };
+          };
+          permission: {
+            title: string;
+            apiList: string;
+            rolePolicies: string;
+            hint: string;
+            method: string;
+            path: string;
+            name: string;
+            source: string;
+            ptype: string;
+            roleId: string;
+            roleIdRequired: string;
+            reload: string;
+            reloadSuccess: string;
+          };
+          attachment: {
+            title: string;
+            keyword: string;
+            originName: string;
+            extension: string;
+            size: string;
+            status: string;
+            upload: string;
+            uploadSuccess: string;
+            preview: string;
+            markDeleted: string;
+            markDeletedConfirm: string;
+          };
         };
       };
       form: {

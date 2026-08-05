@@ -56,3 +56,16 @@ export function toggleHtmlClass(className: string) {
     remove
   };
 }
+
+/**
+ * Format byte size to MB display (e.g. `1.25 MB`)
+ *
+ * @param size bytes number or numeric string
+ */
+export function formatFileSizeMB(size: string | number | null | undefined) {
+  const bytes = Number(size);
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return '-';
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
