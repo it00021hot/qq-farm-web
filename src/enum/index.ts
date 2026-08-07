@@ -4,5 +4,6 @@ export enum SetupStoreId {
   Auth = 'auth-store',
   Route = 'route-store',
   Tab = 'tab-store',
-  Tenant = 'tenant-store'
+  Tenant = 'tenant-store',
+  FarmAccount = 'farm-account-store'
 }

@@ -1,19 +1,27 @@
 import { computed, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
 import { fetchGetUserInfo, fetchLogin } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
+import { router } from '@/router';
 import { localStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
 import { $t } from '@/locales';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
 import { useTenantStore } from '../tenant';
+import { useFarmAccountStore } from '../farm-account';
 import { clearAuthStorage, getToken } from './shared';
 
+const emptyUserInfo = (): Api.Auth.UserInfo => ({
+  userId: '',
+  userName: '',
+  roles: [],
+  buttons: [],
+  tenantId: 0
+});
+
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
-  const route = useRoute();
   const authStore = useAuthStore();
   const routeStore = useRouteStore();
   const tabStore = useTabStore();
@@ -22,13 +30,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
 
   const token = ref('');
 
-  const userInfo: Api.Auth.UserInfo = reactive({
-    userId: '',
-    userName: '',
-    roles: [],
-    buttons: [],
-    tenantId: 0
-  });
+  const userInfo: Api.Auth.UserInfo = reactive(emptyUserInfo());
 
   /** is super role in static route */
   const isStaticSuper = computed(() => {
@@ -40,20 +42,33 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   /** Is login */
   const isLogin = computed(() => Boolean(token.value));
 
-  /** Reset auth store */
+  /** Reset auth store and redirect to login */
   async function resetStore() {
     recordUserId();
 
     clearAuthStorage();
+    token.value = '';
+    Object.assign(userInfo, emptyUserInfo());
 
-    authStore.$reset();
-
-    if (!route.meta.constant) {
-      await toLogin();
+    try {
+      authStore.$reset();
+    } catch {
+      // setup-store $reset may fail; state already cleared above
     }
 
     tabStore.cacheTabs();
-    routeStore.resetStore();
+    await routeStore.resetStore();
+
+    try {
+      useFarmAccountStore().clear();
+    } catch {
+      // ignore
+    }
+
+    const current = router.currentRoute.value;
+    if (current.name !== 'login') {
+      await toLogin();
+    }
   }
 
   /** Record the user ID of the previous login session Used to compare with the current user ID on next login */
@@ -124,7 +139,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
         });
       }
     } else {
-      resetStore();
+      await resetStore();
     }
 
     endLoading();
@@ -173,7 +188,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       const pass = await getUserInfo();
 
       if (!pass) {
-        resetStore();
+        await resetStore();
       }
     }
   }

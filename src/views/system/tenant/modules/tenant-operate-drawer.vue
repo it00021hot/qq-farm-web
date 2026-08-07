@@ -44,6 +44,7 @@ function createDefaultModel(): Model {
     code: '',
     name: '',
     maxUsers: undefined,
+    maxAccounts: undefined,
     expireAt: undefined,
     contactName: '',
     contactPhone: '',
@@ -76,11 +77,12 @@ function handleInitModel() {
   model.value = createDefaultModel();
 
   if (props.operateType === 'edit' && props.rowData) {
-    const { id, name, maxUsers, expireAt, contactName, contactPhone, remark, status } = props.rowData;
+    const { id, name, maxUsers, maxAccounts, expireAt, contactName, contactPhone, remark, status } = props.rowData;
     Object.assign(model.value, {
       id,
       name,
       maxUsers,
+      maxAccounts,
       expireAt: expireAt || undefined,
       contactName,
       contactPhone,
@@ -102,6 +104,7 @@ async function handleSubmit() {
       code: model.value.code,
       name: model.value.name,
       maxUsers: model.value.maxUsers,
+      maxAccounts: model.value.maxAccounts,
       expireAt: model.value.expireAt,
       contactName: model.value.contactName,
       contactPhone: model.value.contactPhone,
@@ -121,6 +124,7 @@ async function handleSubmit() {
       id: model.value.id!,
       name: model.value.name,
       maxUsers: model.value.maxUsers,
+      maxAccounts: model.value.maxAccounts,
       expireAt: model.value.expireAt,
       contactName: model.value.contactName,
       contactPhone: model.value.contactPhone,
@@ -156,6 +160,9 @@ watch(visible, () => {
         </NFormItem>
         <NFormItem :label="$t('page.system.tenant.maxUsers')" path="maxUsers">
           <NInputNumber v-model:value="model.maxUsers" class="w-full" :min="0" />
+        </NFormItem>
+        <NFormItem :label="$t('page.system.tenant.maxAccounts')" path="maxAccounts">
+          <NInputNumber v-model:value="model.maxAccounts" class="w-full" :min="0" />
         </NFormItem>
         <NFormItem :label="$t('page.system.tenant.expireAt')" path="expireAt">
           <NDatePicker v-model:value="model.expireAt" type="datetime" class="w-full" clearable />

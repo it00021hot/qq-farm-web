@@ -20,6 +20,16 @@ declare module "@elegant-router/types" {
     "403": "/403";
     "404": "/404";
     "500": "/500";
+    "farm": "/farm";
+    "farm_account": "/farm/account";
+    "farm_activity": "/farm/activity";
+    "farm_analytics": "/farm/analytics";
+    "farm_card": "/farm/card";
+    "farm_dashboard": "/farm/dashboard";
+    "farm_friends": "/farm/friends";
+    "farm_game-config": "/farm/game-config";
+    "farm_personal": "/farm/personal";
+    "farm_settings": "/farm/settings";
     "home": "/home";
     "iframe-page": "/iframe-page/:url";
     "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?";
@@ -64,6 +74,7 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
+    | "farm"
     | "home"
     | "iframe-page"
     | "login"
@@ -89,6 +100,15 @@ declare module "@elegant-router/types" {
     | "500"
     | "iframe-page"
     | "login"
+    | "farm_account"
+    | "farm_activity"
+    | "farm_analytics"
+    | "farm_card"
+    | "farm_dashboard"
+    | "farm_friends"
+    | "farm_game-config"
+    | "farm_personal"
+    | "farm_settings"
     | "home"
     | "system_admin"
     | "system_attachment"

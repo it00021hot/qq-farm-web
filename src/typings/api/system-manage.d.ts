@@ -11,6 +11,7 @@ declare namespace Api {
       name: string;
       status: EnableStatus;
       maxUsers: number;
+      maxAccounts: number;
       expireAt: number;
       contactName: string;
       contactPhone: string;
@@ -29,6 +30,7 @@ declare namespace Api {
       code: string;
       name: string;
       maxUsers?: number;
+      maxAccounts?: number;
       expireAt?: number;
       contactName?: string;
       contactPhone?: string;
@@ -42,6 +44,7 @@ declare namespace Api {
       id: number;
       name: string;
       maxUsers?: number;
+      maxAccounts?: number;
       expireAt?: number;
       contactName?: string;
       contactPhone?: string;

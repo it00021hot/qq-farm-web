@@ -40,6 +40,99 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'farm',
+    path: '/farm',
+    component: 'layout.base',
+    meta: {
+      title: 'farm',
+      i18nKey: 'route.farm'
+    },
+    children: [
+      {
+        name: 'farm_account',
+        path: '/farm/account',
+        component: 'view.farm_account',
+        meta: {
+          title: 'farm_account',
+          i18nKey: 'route.farm_account'
+        }
+      },
+      {
+        name: 'farm_activity',
+        path: '/farm/activity',
+        component: 'view.farm_activity',
+        meta: {
+          title: 'farm_activity',
+          i18nKey: 'route.farm_activity'
+        }
+      },
+      {
+        name: 'farm_analytics',
+        path: '/farm/analytics',
+        component: 'view.farm_analytics',
+        meta: {
+          title: 'farm_analytics',
+          i18nKey: 'route.farm_analytics'
+        }
+      },
+      {
+        name: 'farm_card',
+        path: '/farm/card',
+        component: 'view.farm_card',
+        meta: {
+          title: 'farm_card',
+          i18nKey: 'route.farm_card'
+        }
+      },
+      {
+        name: 'farm_dashboard',
+        path: '/farm/dashboard',
+        component: 'view.farm_dashboard',
+        meta: {
+          title: 'farm_dashboard',
+          i18nKey: 'route.farm_dashboard',
+          hideInMenu: true
+        }
+      },
+      {
+        name: 'farm_friends',
+        path: '/farm/friends',
+        component: 'view.farm_friends',
+        meta: {
+          title: 'farm_friends',
+          i18nKey: 'route.farm_friends'
+        }
+      },
+      {
+        name: 'farm_game-config',
+        path: '/farm/game-config',
+        component: 'view.farm_game-config',
+        meta: {
+          title: 'farm_game-config',
+          i18nKey: 'route.farm_game-config'
+        }
+      },
+      {
+        name: 'farm_personal',
+        path: '/farm/personal',
+        component: 'view.farm_personal',
+        meta: {
+          title: 'farm_personal',
+          i18nKey: 'route.farm_personal'
+        }
+      },
+      {
+        name: 'farm_settings',
+        path: '/farm/settings',
+        component: 'view.farm_settings',
+        meta: {
+          title: 'farm_settings',
+          i18nKey: 'route.farm_settings'
+        }
+      }
+    ]
+  },
+  {
     name: 'home',
     path: '/home',
     component: 'layout.base$view.home',

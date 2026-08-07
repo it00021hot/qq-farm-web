@@ -3,20 +3,24 @@ import { computed, reactive, ref } from 'vue';
 import type { VNode } from 'vue';
 import { fetchChangePassword } from '@/service/api';
 import { useAuthStore } from '@/store/modules/auth';
+import { useAuth } from '@/hooks/business/auth';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import { useRouterPush } from '@/hooks/common/router';
 import { useSvgIcon } from '@/hooks/common/icon';
 import { $t } from '@/locales';
+import CardRedeemDrawer from '@/views/farm/card/modules/card-redeem-drawer.vue';
 
 defineOptions({
   name: 'UserAvatar'
 });
 
 const authStore = useAuthStore();
+const { hasAuth } = useAuth();
 const { toLogin } = useRouterPush();
 const { SvgIconVNode } = useSvgIcon();
 
 const showPwdModal = ref(false);
+const redeemVisible = ref(false);
 const submitting = ref(false);
 const { formRef, validate, restoreValidation } = useNaiveForm();
 
@@ -46,7 +50,7 @@ function loginOrRegister() {
   toLogin();
 }
 
-type DropdownKey = 'password' | 'logout';
+type DropdownKey = 'password' | 'redeem' | 'logout';
 
 type DropdownOption =
   | {
@@ -65,14 +69,25 @@ const options = computed(() => {
       label: $t('common.changePassword'),
       key: 'password',
       icon: SvgIconVNode({ icon: 'ph:lock-key', fontSize: 18 })
-    },
+    }
+  ];
+
+  if (hasAuth('farm-card:redeem')) {
+    opts.push({
+      label: $t('page.farm.card.redeem'),
+      key: 'redeem',
+      icon: SvgIconVNode({ icon: 'mdi:ticket-confirmation-outline', fontSize: 18 })
+    });
+  }
+
+  opts.push(
     { type: 'divider', key: 'divider' },
     {
       label: $t('common.logout'),
       key: 'logout',
       icon: SvgIconVNode({ icon: 'ph:sign-out', fontSize: 18 })
     }
-  ];
+  );
 
   return opts;
 });
@@ -95,9 +110,7 @@ function logout() {
     content: $t('common.logoutConfirm'),
     positiveText: $t('common.confirm'),
     negativeText: $t('common.cancel'),
-    onPositiveClick: () => {
-      authStore.resetStore();
-    }
+    onPositiveClick: () => authStore.resetStore()
   });
 }
 
@@ -108,6 +121,10 @@ function handleDropdown(key: DropdownKey) {
   }
   if (key === 'password') {
     openPwdModal();
+    return;
+  }
+  if (key === 'redeem') {
+    redeemVisible.value = true;
   }
 }
 
@@ -192,6 +209,8 @@ async function handleChangePassword() {
         </NSpace>
       </template>
     </NModal>
+
+    <CardRedeemDrawer v-model:visible="redeemVisible" />
   </template>
 </template>
 

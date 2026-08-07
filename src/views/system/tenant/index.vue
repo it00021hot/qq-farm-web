@@ -61,6 +61,11 @@ const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagi
       align: 'center'
     },
     {
+      key: 'maxAccounts',
+      title: $t('page.system.tenant.maxAccounts'),
+      align: 'center'
+    },
+    {
       key: 'expireAt',
       title: $t('page.system.tenant.expireAt'),
       align: 'center',

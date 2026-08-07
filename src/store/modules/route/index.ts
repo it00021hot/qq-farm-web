@@ -133,13 +133,18 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
 
   /** Reset store */
   async function resetStore() {
-    const routeStore = useRouteStore();
-
-    routeStore.$reset();
-
     resetVueRoutes();
 
-    // after reset store, need to re-init constant route
+    // Force re-init flags. Pinia $reset on setup stores + useBoolean can miss these,
+    // leaving login/constant routes unregistered after logout.
+    setIsInitConstantRoute(false);
+    setIsInitAuthRoute(false);
+    constantRoutes.value = [];
+    authRoutes.value = [];
+    menus.value = [];
+    cacheRoutes.value = [];
+    excludeCacheRoutes.value = [];
+
     await initConstantRoute();
   }
 

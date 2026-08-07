@@ -5,6 +5,13 @@ import { useRouteStore } from '@/store/modules/route';
 import { localStg } from '@/utils/storage';
 import { getRouteName } from '@/router/elegant/transform';
 
+/** Routes reachable without login. Home must NOT be here (it is constant only for dynamic-route registration). */
+const PUBLIC_ROUTE_NAMES = new Set<RouteKey>(['login', '403', '404', '500']);
+
+function isPublicRoute(name: RouteLocationNormalized['name']): boolean {
+  return typeof name === 'string' && PUBLIC_ROUTE_NAMES.has(name as RouteKey);
+}
+
 /**
  * create route guard
  *
@@ -25,7 +32,8 @@ export function createRouteGuard(router: Router) {
     const noAuthorizationRoute: RouteKey = '403';
 
     const isLogin = Boolean(localStg.get('token'));
-    const needLogin = !to.meta.constant;
+    // Soybean marks home as constant for dynamic-route registration, but it still requires auth.
+    const needLogin = !isPublicRoute(to.name);
     const routeRoles = to.meta.roles || [];
 
     const hasRole = authStore.userInfo.roles.some(role => routeRoles.includes(role));
@@ -87,9 +95,12 @@ async function initRoute(to: RouteLocationNormalized): Promise<RouteLocationRaw 
   const isLogin = Boolean(localStg.get('token'));
 
   if (!isLogin) {
-    // if the user is not logged in and the route is a constant route but not the "not-found" route, then it is allowed to access.
-    if (to.meta.constant && !isNotFoundRoute) {
-      routeStore.onRouteSwitchWhenNotLoggedIn();
+    // Only true public pages (login / error) are allowed without auth.
+    // Root is a redirect shell; allow it so `/` can resolve, then the main guard blocks `/home`.
+    if (isPublicRoute(to.name) || to.name === 'root') {
+      if (to.name !== 'root') {
+        routeStore.onRouteSwitchWhenNotLoggedIn();
+      }
 
       return null;
     }
