@@ -1,10 +1,10 @@
-# QQ 农场 · 前端（vue-framework）
+# QQ 农场 · 前端（qq-farm-web）
 
 QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/背包/任务、好友、活动中心、商城与数据分析。
 
 基于 [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin)（Vue 3 + Vite + TypeScript + Naive UI + UnoCSS）改造；业务页面在 `src/views/farm`。
 
-配套后端：[`../go-framework`](../go-framework)。
+配套后端：[`../qq-farm-core`](../qq-farm-core)。
 
 <span>中文 | <a href="./README.en_US.md">English</a></span>
 
@@ -29,7 +29,7 @@ QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/�
 
 - Vue 3、Vite、TypeScript、Pinia、Naive UI、UnoCSS
 - 静态扁平菜单（仅登录鉴权，无后端菜单/RBAC）
-- 请求封装对接 go-framework（成功码 `0`，Token 刷新等）
+- 请求封装对接 qq-farm-core（成功码 `0`，Token 刷新等）
 
 ## 环境要求
 
@@ -49,7 +49,7 @@ pnpm dev          # 默认 mode=test，代理后端
 VITE_SERVICE_BASE_URL=http://127.0.0.1:9528
 ```
 
-请先启动 go-framework（`make run` 或 `go run ./cmd/app -e=dev -p=9528`）。
+请先启动 qq-farm-core（`make run` 或 `go run ./cmd/app -e=dev -p=9528`）。
 
 ```bash
 pnpm build        # 生产构建
@@ -78,7 +78,7 @@ src/
 
 - 登录后拉取后端路由与按钮 alias
 - 页面按钮用 `useAuth().hasAuth('farm-xxx:yyy')` 控制
-- 新增后端 API 需在 go-framework 权限种子 / 菜单中登记，否则会 403
+- 新增后端 API 需在 qq-farm-core 权限种子 / 菜单中登记，否则会 403
 
 ## License
 

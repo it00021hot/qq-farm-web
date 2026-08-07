@@ -1,10 +1,10 @@
-# QQ Farm · Frontend (vue-framework)
+# QQ Farm · Frontend (qq-farm-web)
 
 Admin UI for the QQ Farm assistant: multi-account control, automation settings, personal farm / bag / tasks, friends, activity center, mall, and analytics.
 
 Built on [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin) (Vue 3 + Vite + TypeScript + Naive UI + UnoCSS). Farm features live under `src/views/farm`.
 
-Backend: [`../go-framework`](../go-framework).
+Backend: [`../qq-farm-core`](../qq-farm-core).
 
 <span><a href="./README.md">中文</a> | English</span>
 
@@ -29,7 +29,7 @@ App title is set in `.env`: `VITE_APP_TITLE=QQ农场智能助手`.
 
 - Vue 3, Vite, TypeScript, Pinia, Naive UI, UnoCSS
 - Static flat auth routes (login-only; no backend menu/RBAC)
-- HTTP client aligned with go-framework (`success code = 0`, token refresh, etc.)
+- HTTP client aligned with qq-farm-core (`success code = 0`, token refresh, etc.)
 
 ## Requirements
 
@@ -49,7 +49,7 @@ Backend URL (`.env.test`):
 VITE_SERVICE_BASE_URL=http://127.0.0.1:9528
 ```
 
-Start go-framework first (`make run` or `go run ./cmd/app -e=dev -p=9528`).
+Start qq-farm-core first (`make run` or `go run ./cmd/app -e=dev -p=9528`).
 
 ```bash
 pnpm build
@@ -75,7 +75,7 @@ src/
 
 - Routes and button aliases come from the backend after login
 - Use `useAuth().hasAuth('farm-xxx:yyy')` for UI gates
-- New APIs must be seeded in go-framework RBAC resources or requests return 403
+- New APIs must be seeded in qq-farm-core RBAC resources or requests return 403
 
 ## License
 
