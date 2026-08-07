@@ -11,7 +11,6 @@ import {
 } from '@/service/api';
 import { getAuthorization } from '@/service/request/shared';
 import { getServiceBaseURL } from '@/utils/service';
-import { localStg } from '@/utils/storage';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import { $t } from '@/locales';
 
@@ -192,14 +191,6 @@ async function fetchWxQrBlob(qrUrl: string) {
   const headers: Record<string, string> = {};
   const Authorization = getAuthorization();
   if (Authorization) headers.Authorization = Authorization;
-  try {
-    const tenantId = localStg.get('tenantId');
-    if (tenantId !== null && tenantId !== undefined && String(tenantId) !== '' && String(tenantId) !== '0') {
-      headers['X-Tenant-ID'] = String(tenantId);
-    }
-  } catch {
-    // ignore
-  }
   const response = await fetch(`${baseURL}${qrUrl}`, { headers });
   if (!response.ok) {
     throw new Error('二维码获取失败');

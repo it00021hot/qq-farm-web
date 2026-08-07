@@ -1,45 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted } from 'vue';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
-import { useTenantStore } from '@/store/modules/tenant';
 import { useAppStore } from '@/store/modules/app';
 import { $t } from '@/locales';
 
 defineOptions({ name: 'FarmAccountSwitcher' });
 
 const farmAccountStore = useFarmAccountStore();
-const tenantStore = useTenantStore();
 const appStore = useAppStore();
 
 async function reload() {
-  if (!tenantStore.hasTenantContext) {
-    farmAccountStore.clear();
-    return;
-  }
   await farmAccountStore.loadAccounts();
-}
-
-function onTenantChanged() {
-  farmAccountStore.clear();
-  void reload();
 }
 
 onMounted(() => {
   farmAccountStore.initFromStorage();
   void reload();
-  window.addEventListener('tenant-changed', onTenantChanged);
 });
-
-onUnmounted(() => {
-  window.removeEventListener('tenant-changed', onTenantChanged);
-});
-
-watch(
-  () => tenantStore.currentTenantId,
-  () => {
-    void reload();
-  }
-);
 
 function handleUpdate(value: number | null) {
   farmAccountStore.setAccountId(value);
@@ -47,7 +24,7 @@ function handleUpdate(value: number | null) {
 </script>
 
 <template>
-  <div v-if="tenantStore.hasTenantContext" class="px-12px py-8px">
+  <div class="px-12px py-8px">
     <NSelect
       :value="farmAccountStore.currentAccountId"
       :options="farmAccountStore.accountOptions"

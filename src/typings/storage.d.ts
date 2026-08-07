@@ -39,8 +39,6 @@ declare namespace StorageType {
     };
     /** The last login user id */
     lastLoginUserId: string;
-    /** Selected tenant id for platform users (X-Tenant-ID) */
-    tenantId: string;
     /** Selected farm account id for farm pages */
     farmAccountId: string;
   }

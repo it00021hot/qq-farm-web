@@ -9,7 +9,6 @@ import { SetupStoreId } from '@/enum';
 import { $t } from '@/locales';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
-import { useTenantStore } from '../tenant';
 import { useFarmAccountStore } from '../farm-account';
 import { clearAuthStorage, getToken } from './shared';
 
@@ -17,8 +16,7 @@ const emptyUserInfo = (): Api.Auth.UserInfo => ({
   userId: '',
   userName: '',
   roles: [],
-  buttons: [],
-  tenantId: 0
+  buttons: []
 });
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
@@ -168,11 +166,6 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     if (!error) {
       // update store
       Object.assign(userInfo, info);
-      const tenantStore = useTenantStore();
-      tenantStore.initFromAuth();
-      if (tenantStore.isPlatformUser) {
-        await tenantStore.loadTenantOptions();
-      }
 
       return true;
     }

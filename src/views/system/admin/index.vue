@@ -1,26 +1,21 @@
 <script setup lang="tsx">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
-import { useBoolean } from '@sa/hooks';
+import { ref } from 'vue';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
 import { enableStatusRecord } from '@/constants/business';
 import { fetchGetAdminList, fetchUpdateAdminStatus } from '@/service/api';
 import { useAppStore } from '@/store/modules/app';
-import { useTenantStore } from '@/store/modules/tenant';
 import { useAuth } from '@/hooks/business/auth';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
 import { $t } from '@/locales';
 import AdminOperateDrawer from './modules/admin-operate-drawer.vue';
 import AdminSearch from './modules/admin-search.vue';
-import PlatformUserDrawer from './modules/platform-user-drawer.vue';
 
 defineOptions({
   name: 'SystemAdmin'
 });
 
 const appStore = useAppStore();
-const tenantStore = useTenantStore();
 const { hasAuth } = useAuth();
-const { bool: platformDrawerVisible, setTrue: openPlatformDrawer } = useBoolean();
 
 const searchParams = ref<Api.SystemManage.AdminSearchParams>({
   current: 1,
@@ -30,16 +25,7 @@ const searchParams = ref<Api.SystemManage.AdminSearchParams>({
 });
 
 const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagination } = useNaivePaginatedTable({
-  api: async () => {
-    if (!tenantStore.hasTenantContext) {
-      return {
-        data: { records: [], current: 1, size: 10, total: 0 },
-        error: null,
-        response: null
-      } as unknown as Awaited<ReturnType<typeof fetchGetAdminList>>;
-    }
-    return fetchGetAdminList(searchParams.value);
-  },
+  api: () => fetchGetAdminList(searchParams.value),
   transform: response => defaultTransform(response),
   onPaginationParamsChange: params => {
     searchParams.value.current = params.page;
@@ -145,32 +131,10 @@ async function handleToggleStatus(row: Api.SystemManage.Admin) {
     await getDataByPage();
   }
 }
-
-function handleTenantChanged() {
-  getDataByPage();
-}
-
-watch(
-  () => tenantStore.currentTenantId,
-  () => {
-    getDataByPage();
-  }
-);
-
-onMounted(() => {
-  window.addEventListener('tenant-changed', handleTenantChanged);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('tenant-changed', handleTenantChanged);
-});
 </script>
 
 <template>
   <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
-    <NAlert v-if="!tenantStore.hasTenantContext" type="warning" :bordered="false">
-      {{ $t('page.system.tenant.selectRequired') }}
-    </NAlert>
     <AdminSearch v-model:model="searchParams" @search="getDataByPage" />
     <NCard :title="$t('page.system.admin.title')" :bordered="false" size="small" class="card-wrapper sm:flex-1-hidden">
       <template #header-extra>
@@ -181,15 +145,6 @@ onUnmounted(() => {
                 <icon-ic-round-plus class="text-icon" />
               </template>
               {{ $t('common.add') }}
-            </NButton>
-            <NButton
-              v-if="tenantStore.isPlatformUser && hasAuth('platform-user:add')"
-              size="small"
-              ghost
-              type="info"
-              @click="openPlatformDrawer"
-            >
-              {{ $t('page.system.admin.addPlatformUser') }}
             </NButton>
           </template>
         </TableHeaderOperation>
@@ -213,7 +168,6 @@ onUnmounted(() => {
         :row-data="editingData"
         @submitted="getDataByPage"
       />
-      <PlatformUserDrawer v-model:visible="platformDrawerVisible" @submitted="getDataByPage" />
     </NCard>
   </div>
 </template>

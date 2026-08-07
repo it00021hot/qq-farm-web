@@ -39,6 +39,7 @@ type PassNode = {
 type ShopGoods = {
   id?: string | number;
   name?: string;
+  category?: string;
   categoryId?: string;
   categoryName?: string;
   exchangeable?: boolean;
@@ -50,6 +51,7 @@ type ShopGoods = {
   item?: RewardItem;
   cost?: { count?: string | number; image?: string; name?: string };
 };
+type ShopCategory = { id: string; name: string };
 type SolarTerm = {
   id?: string;
   name?: string;
@@ -130,7 +132,25 @@ const canLightConstellation = computed(() => {
 });
 
 const shopGoods = computed(() => (shop.value.goods as ShopGoods[]) || []);
-const shopCategories = computed(() => (shop.value.categories as Array<{ id?: string; name?: string }>) || []);
+const shopCategories = computed(() => {
+  const raw = shop.value.categories;
+  if (!Array.isArray(raw)) return [] as ShopCategory[];
+  const list: ShopCategory[] = [];
+  for (const item of raw) {
+    if (typeof item === 'string') {
+      const name = item.trim();
+      if (name) list.push({ id: name, name });
+      continue;
+    }
+    if (item && typeof item === 'object') {
+      const row = item as { id?: string; name?: string };
+      const id = String(row.id ?? row.name ?? '').trim();
+      const name = String(row.name ?? row.id ?? '').trim();
+      if (id || name) list.push({ id: id || name, name: name || id });
+    }
+  }
+  return list;
+});
 const shopBalance = computed(() => {
   if (shop.value.balanceKnown === false) return '--';
   const currencies = (shop.value.currencies as Array<{ balance?: string | number | null }> | undefined) || [];
@@ -139,10 +159,12 @@ const shopBalance = computed(() => {
   if (value === undefined || value === null || value === '') return '--';
   return String(value);
 });
+function goodsCategory(goods: ShopGoods) {
+  return String(goods.categoryId || goods.categoryName || goods.category || '').trim();
+}
 const visibleShopGoods = computed(() => {
   if (shopCategory.value === '__all__') return shopGoods.value;
-  const category = shopCategories.value.find(item => item.id === shopCategory.value);
-  return shopGoods.value.filter(item => item.categoryId === shopCategory.value || item.categoryName === category?.name);
+  return shopGoods.value.filter(item => goodsCategory(item) === shopCategory.value);
 });
 
 const solarTermList = computed(() => (solarTerms.value.terms as SolarTerm[]) || []);
@@ -214,9 +236,30 @@ function formatRewardLabel(item: RewardItem) {
   return `${name}${count}`;
 }
 
+function claimSuccessMessage(data: Record<string, unknown> | null | undefined) {
+  if (data?.message && typeof data.message === 'string') {
+    return String(data.message);
+  }
+  const rewards = (data?.rewards as RewardItem[] | undefined) || [];
+  const labels = rewards.map(item => formatRewardLabel(item)).filter(Boolean);
+  if (labels.length) {
+    return $t('page.farm.activity.claimRewardsSuccess', { items: labels.join('、') });
+  }
+  return $t('page.farm.activity.claimSuccess');
+}
+
+function notifyClaimResult(data: Record<string, unknown> | null | undefined) {
+  const text = claimSuccessMessage(data);
+  if (data?.noClaimable || data?.outcome === 'nothingToClaim') {
+    message.info(text);
+    return;
+  }
+  message.success(text);
+}
+
 function shopDisabledReason(item: ShopGoods) {
   if (pendingKey.value === 'shop') return $t('page.farm.activity.exchanging');
-  if (item.soldOut) return $t('page.farm.activity.soldOut');
+  if (item.owned || item.soldOut) return $t('page.farm.activity.alreadyExchanged');
   if (!item.exchangeable) return $t('page.farm.activity.notExchangeable');
   if (!actionEnabled('exchange')) return $t('page.farm.activity.exchangeUnavailable');
   return '';
@@ -245,6 +288,27 @@ function constellationStateLabel(group: ConstellationGroup | null) {
   return String(group.visualState || '');
 }
 
+/** Prefer today's lightable node, then currentDay, then latest progress — not the first star. */
+function pickConstellationFocus(groups: ConstellationGroup[]) {
+  const sorted = groups.slice().sort((a, b) => Number(a.order ?? 999) - Number(b.order ?? 999));
+  const actionable = sorted.find(g => ['lightable', 'claimableUnknown'].includes(String(g.visualState || '')));
+  if (actionable?.id) return actionable.id;
+
+  const currentDay = Number(constellation.value.currentDay || 0);
+  if (currentDay > 0) {
+    const byDay = sorted.find(g => Number(g.order) === currentDay);
+    if (byDay?.id) return byDay.id;
+  }
+
+  const inProgress = sorted.find(g => g.visualState === 'unknown');
+  if (inProgress?.id) return inProgress.id;
+
+  const latestLit = [...sorted].reverse().find(g => g.visualState === 'lit');
+  if (latestLit?.id) return latestLit.id;
+
+  return sorted[0]?.id || '';
+}
+
 function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   const snap = (data.snapshot || data) as Api.Farm.ActivitySnapshot;
   season.value = (snap.season as Record<string, unknown>) || {};
@@ -255,9 +319,7 @@ function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   actions.value = snap.actions || data.actions || {};
 
   const groups = (constellation.value.groups as ConstellationGroup[]) || [];
-  if (!groups.some(g => g.id === selectedConstellationId.value)) {
-    selectedConstellationId.value = groups[0]?.id || '';
-  }
+  selectedConstellationId.value = pickConstellationFocus(groups);
   const terms = (solarTerms.value.terms as SolarTerm[]) || [];
   const currentTermId = String(solarTerms.value.currentTermId || '');
   if (!terms.some(t => t.id === selectedSolarId.value)) {
@@ -284,6 +346,7 @@ async function loadActivities() {
 
 async function claimPass() {
   if (!farmAccountStore.currentAccountId || !actionEnabled('claimPass')) return;
+  const fallbackRewards = passNodes.value.filter(n => n.claimable).flatMap(n => n.rewards || []);
   pendingKey.value = 'pass';
   try {
     const { error, data } = await fetchClaimFarmActivityPass({
@@ -293,7 +356,11 @@ async function claimPass() {
       message.error(error.message || $t('page.farm.activity.claimFailed'));
       return;
     }
-    message.success($t('page.farm.activity.claimSuccess'));
+    const payload = { ...(data as Record<string, unknown>) };
+    if ((!Array.isArray(payload.rewards) || !(payload.rewards as unknown[]).length) && fallbackRewards.length) {
+      payload.rewards = fallbackRewards;
+    }
+    notifyClaimResult(payload);
     if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
     else await loadActivities();
   } finally {
@@ -312,7 +379,7 @@ async function lightConstellation() {
       message.error(error.message || $t('page.farm.activity.claimFailed'));
       return;
     }
-    message.success($t('page.farm.activity.claimSuccess'));
+    notifyClaimResult(data as Record<string, unknown>);
     if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
     else await loadActivities();
   } finally {
@@ -329,18 +396,29 @@ function openExchange(goods: ShopGoods) {
 
 async function confirmExchange() {
   if (!farmAccountStore.currentAccountId || !exchangeGoods.value?.id) return;
+  const exchanging = exchangeGoods.value;
   pendingKey.value = 'shop';
   try {
     const { error, data } = await fetchExchangeFarmActivityShop({
       accountId: farmAccountStore.currentAccountId,
-      itemId: String(exchangeGoods.value.id),
+      itemId: String(exchanging.id),
       count: exchangeCount.value || 1
     });
     if (error) {
       message.error(error.message || $t('page.farm.activity.claimFailed'));
       return;
     }
-    message.success($t('page.farm.activity.claimSuccess'));
+    const payload = { ...(data as Record<string, unknown>) };
+    if (!Array.isArray(payload.rewards) || !(payload.rewards as unknown[]).length) {
+      const fallbackItem = exchanging.item
+        ? {
+            ...exchanging.item,
+            count: Number(exchanging.item.count || 1) * Number(exchangeCount.value || 1)
+          }
+        : { id: exchanging.id, name: exchanging.name, count: exchangeCount.value || 1 };
+      payload.rewards = [fallbackItem];
+    }
+    notifyClaimResult(payload);
     exchangeOpen.value = false;
     exchangeGoods.value = null;
     if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
@@ -364,7 +442,11 @@ async function claimSolar() {
       message.error(error.message || $t('page.farm.activity.claimFailed'));
       return;
     }
-    message.success($t('page.farm.activity.claimSuccess'));
+    const payload = { ...(data as Record<string, unknown>) };
+    if ((!Array.isArray(payload.rewards) || !(payload.rewards as unknown[]).length) && term.rewards?.length) {
+      payload.rewards = term.rewards;
+    }
+    notifyClaimResult(payload);
     if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
     else await loadActivities();
   } finally {
@@ -603,9 +685,18 @@ onUnmounted(() => {
             <div
               v-for="goods in visibleShopGoods"
               :key="String(goods.id)"
-              class="rounded-8px border border-gray-200 p-12px dark:border-gray-700"
+              class="relative rounded-8px border border-gray-200 p-12px dark:border-gray-700"
               :class="{ 'opacity-60': !!shopDisabledReason(goods) }"
             >
+              <NTag
+                v-if="goods.owned || goods.soldOut"
+                size="tiny"
+                type="success"
+                :bordered="false"
+                class="absolute right-8px top-8px z-1"
+              >
+                {{ $t('page.farm.activity.alreadyExchanged') }}
+              </NTag>
               <div class="mb-8px flex-center h-72px rounded-6px bg-gray-50 dark:bg-gray-800">
                 <img
                   v-if="rewardImage(goods.item)"

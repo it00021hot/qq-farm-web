@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
 import {
@@ -14,7 +14,6 @@ import {
   fetchStopFarmAccount
 } from '@/service/api';
 import { useAppStore } from '@/store/modules/app';
-import { useTenantStore } from '@/store/modules/tenant';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
@@ -27,7 +26,6 @@ defineOptions({
 });
 
 const appStore = useAppStore();
-const tenantStore = useTenantStore();
 const farmAccountStore = useFarmAccountStore();
 const { hasAuth } = useAuth();
 
@@ -157,32 +155,15 @@ const { drawerVisible, operateType, editingData, handleAdd, handleEdit, checkedR
   getData
 );
 
-function ensureTenantContext() {
-  if (tenantStore.hasTenantContext) {
-    return true;
-  }
-  window.$message?.warning($t('page.system.tenant.selectRequired'));
-  return false;
-}
-
 function onAdd() {
-  if (!ensureTenantContext()) {
-    return;
-  }
   handleAdd();
 }
 
 function edit(id: number) {
-  if (!ensureTenantContext()) {
-    return;
-  }
   handleEdit(id);
 }
 
 async function handleStart(id: number) {
-  if (!ensureTenantContext()) {
-    return;
-  }
   const { error } = await fetchStartFarmAccount(id);
   if (!error) {
     window.$message?.success($t('common.updateSuccess'));
@@ -191,9 +172,6 @@ async function handleStart(id: number) {
 }
 
 async function handleStop(id: number) {
-  if (!ensureTenantContext()) {
-    return;
-  }
   const { error } = await fetchStopFarmAccount(id);
   if (!error) {
     window.$message?.success($t('common.updateSuccess'));
@@ -202,9 +180,6 @@ async function handleStop(id: number) {
 }
 
 async function handleDelete(id: number) {
-  if (!ensureTenantContext()) {
-    return;
-  }
   const { error } = await fetchDeleteFarmAccount(id);
   if (!error) {
     window.$message?.success($t('common.deleteSuccess'));
@@ -212,34 +187,13 @@ async function handleDelete(id: number) {
   }
 }
 
-function onTenantChanged() {
-  void refreshList();
-}
-
 async function refreshList(page: number = 1) {
-  if (!ensureTenantContext()) {
-    return;
-  }
   await getDataByPage(page);
   void farmAccountStore.loadAccounts();
 }
 
 onMounted(async () => {
-  if (tenantStore.showSwitcher) {
-    await tenantStore.loadTenantOptions();
-  } else {
-    tenantStore.initFromAuth();
-  }
-  if (tenantStore.hasTenantContext) {
-    await getDataByPage();
-  } else if (tenantStore.isPlatformUser) {
-    window.$message?.warning($t('page.system.tenant.selectRequired'));
-  }
-  window.addEventListener('tenant-changed', onTenantChanged);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('tenant-changed', onTenantChanged);
+  await refreshList();
 });
 </script>
 

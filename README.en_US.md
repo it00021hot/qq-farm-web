@@ -10,25 +10,25 @@ Backend: [`../go-framework`](../go-framework).
 
 ## Features
 
-| Area                | Description                                                              |
-| ------------------- | ------------------------------------------------------------------------ |
-| Dashboard           | Run status, logs, realtime channel                                       |
-| Accounts            | CRUD, start/stop, WeChat QR login                                        |
-| Personal farm       | Lands, bag (sell/use), daily gifts & tasks                               |
-| Friends             | Sync, help/steal/bad, interaction history                                |
-| Activity center     | Travel pass, constellation, star-sand shop, solar terms                  |
-| Mall / mystery shop | Purchase & balances                                                      |
-| Automation          | Patrol intervals, quiet hours, planting strategy, friend toggles         |
-| Game config         | Seed / fruit / item static data                                          |
-| Analytics / cards   | Overview & redeem codes                                                  |
-| System              | Users, roles, menus, permissions, tenants (dynamic routes + button auth) |
+| Area                | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| Dashboard           | Run status, logs, realtime channel                               |
+| Accounts            | CRUD, start/stop, WeChat QR login                                |
+| Personal farm       | Lands, bag (sell/use), daily gifts & tasks                       |
+| Friends             | Sync, help/steal/bad, interaction history                        |
+| Activity center     | Travel pass, constellation, star-sand shop, solar terms          |
+| Mall / mystery shop | Purchase & balances                                              |
+| Automation          | Patrol intervals, quiet hours, planting strategy, friend toggles |
+| Game config         | Seed / fruit / item static data                                  |
+| Analytics           | Overview                                                         |
+| System              | Admin users                                                      |
 
 App title is set in `.env`: `VITE_APP_TITLE=QQ农场智能助手`.
 
 ## Stack
 
 - Vue 3, Vite, TypeScript, Pinia, Naive UI, UnoCSS
-- Dynamic auth routes (Elegant Router + backend menus/buttons)
+- Static flat auth routes (login-only; no backend menu/RBAC)
 - HTTP client aligned with go-framework (`success code = 0`, token refresh, etc.)
 
 ## Requirements

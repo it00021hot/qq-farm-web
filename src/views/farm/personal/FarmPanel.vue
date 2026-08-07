@@ -78,8 +78,9 @@ function landImageSrc(land: Api.Farm.LandRow) {
 function growProgress(land: Api.Farm.LandRow) {
   const mature = Number(land.matureInSec || 0);
   const total = Number(land.totalGrowTime || 0);
-  if (total <= 0 || mature <= 0) return 0;
-  return Math.min(100, Math.max(0, (mature / total) * 100));
+  if (total <= 0) return 0;
+  // matureInSec = remaining; progress = elapsed / total
+  return Math.max(0, Math.min(100, Math.round(((total - mature) / total) * 100)));
 }
 
 function formatDuration(sec: number) {

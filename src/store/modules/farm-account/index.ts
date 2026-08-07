@@ -3,11 +3,8 @@ import { defineStore } from 'pinia';
 import { SetupStoreId } from '@/enum';
 import { fetchGetFarmAccountList } from '@/service/api';
 import { localStg } from '@/utils/storage';
-import { useTenantStore } from '../tenant';
 
 export const useFarmAccountStore = defineStore(SetupStoreId.FarmAccount, () => {
-  const tenantStore = useTenantStore();
-
   const accounts = ref<Api.Farm.Account[]>([]);
   const currentAccountId = ref<number | null>(null);
   const loading = ref(false);
@@ -48,11 +45,6 @@ export const useFarmAccountStore = defineStore(SetupStoreId.FarmAccount, () => {
   }
 
   async function loadAccounts() {
-    if (!tenantStore.hasTenantContext) {
-      clear();
-      return;
-    }
-
     loading.value = true;
     try {
       const { data, error } = await fetchGetFarmAccountList({ current: 1, size: 200 });

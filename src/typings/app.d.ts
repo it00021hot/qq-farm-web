@@ -533,34 +533,6 @@ declare namespace App {
             title: string;
           };
         };
-        home: {
-          branchDesc: string;
-          greeting: string;
-          weatherDesc: string;
-          projectCount: string;
-          todo: string;
-          message: string;
-          downloadCount: string;
-          registerCount: string;
-          schedule: string;
-          study: string;
-          work: string;
-          rest: string;
-          entertainment: string;
-          visitCount: string;
-          turnover: string;
-          dealCount: string;
-          projectNews: {
-            title: string;
-            moreNews: string;
-            desc1: string;
-            desc2: string;
-            desc3: string;
-            desc4: string;
-            desc5: string;
-          };
-          creativity: string;
-        };
         system: {
           common: {
             status: {
@@ -569,27 +541,6 @@ declare namespace App {
               normal: string;
               deleted: string;
             };
-          };
-          tenant: {
-            title: string;
-            keyword: string;
-            code: string;
-            name: string;
-            status: string;
-            maxUsers: string;
-            maxAccounts: string;
-            expireAt: string;
-            contactName: string;
-            contactPhone: string;
-            remark: string;
-            adminAccount: string;
-            adminPassword: string;
-            adminNickName: string;
-            addTenant: string;
-            editTenant: string;
-            toggleStatusConfirm: string;
-            switchPlaceholder: string;
-            selectRequired: string;
           };
           admin: {
             title: string;
@@ -601,84 +552,10 @@ declare namespace App {
             realName: string;
             phone: string;
             email: string;
-            roles: string;
-            tenants: string;
             status: string;
             addAdmin: string;
             editAdmin: string;
-            addPlatformUser: string;
             toggleStatusConfirm: string;
-          };
-          role: {
-            title: string;
-            name: string;
-            code: string;
-            desc: string;
-            parentId: string;
-            rootParent: string;
-            typeLabel: string;
-            status: string;
-            auth: string;
-            addRole: string;
-            editRole: string;
-            roleType: {
-              platform: string;
-              tenant: string;
-            };
-          };
-          menu: {
-            title: string;
-            name: string;
-            alias: string;
-            desc: string;
-            parentId: string;
-            rootParent: string;
-            typeLabel: string;
-            fUrl: string;
-            bUrl: string;
-            methods: string;
-            path: string;
-            icon: string;
-            hideInMenu: string;
-            hideInMenuShow: string;
-            hideInMenuHide: string;
-            sortOrder: string;
-            status: string;
-            addMenu: string;
-            editMenu: string;
-            resourceType: {
-              directory: string;
-              menu: string;
-              button: string;
-            };
-          };
-          permission: {
-            title: string;
-            apiList: string;
-            rolePolicies: string;
-            hint: string;
-            method: string;
-            path: string;
-            name: string;
-            source: string;
-            ptype: string;
-            roleId: string;
-            roleIdRequired: string;
-            reload: string;
-            reloadSuccess: string;
-          };
-          attachment: {
-            title: string;
-            keyword: string;
-            originName: string;
-            extension: string;
-            size: string;
-            status: string;
-            upload: string;
-            uploadSuccess: string;
-            preview: string;
-            markDeleted: string;
-            markDeletedConfirm: string;
           };
         };
         farm: {
@@ -929,6 +806,7 @@ declare namespace App {
             exchangeConfirm: string;
             exchanging: string;
             soldOut: string;
+            alreadyExchanged: string;
             notExchangeable: string;
             exchangeUnavailable: string;
             claimSolar: string;
@@ -945,6 +823,7 @@ declare namespace App {
             termIdRequired: string;
             syncedAt: string;
             claimSuccess: string;
+            claimRewardsSuccess: string;
             exchangeableGoods: string;
             noClaimable: string;
             noRewards: string;
@@ -1150,32 +1029,6 @@ declare namespace App {
             addItem: string;
             editItem: string;
             deleteItem: string;
-          };
-          card: {
-            title: string;
-            keyword: string;
-            code: string;
-            cardType: {
-              label: string;
-              time: string;
-              quota: string;
-            };
-            cardStatus: {
-              label: string;
-              unused: string;
-              used: string;
-              disabled: string;
-            };
-            value: string;
-            description: string;
-            count: string;
-            usedByTenant: string;
-            usedAt: string;
-            addCard: string;
-            redeem: string;
-            redeemTitle: string;
-            redeemSuccess: string;
-            redeemCodePlaceholder: string;
           };
         };
       };

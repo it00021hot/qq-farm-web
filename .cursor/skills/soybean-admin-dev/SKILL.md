@@ -79,11 +79,9 @@ Use only `src/service/request` (`createFlatRequest`). Call sites destructure `{ 
 ### API path convention（与后端对齐）
 
 - `/auth/*` — 登录、info、user-routes、logout、password
-- `/platform/*` — 租户 / 角色 / 菜单 / 权限
-- `/system/*` — 用户 / 附件 / platform-user
-- 动作：`list|add|modify|delete`（及 `detail|tree|status`）；方法仅 `get` / `post`
-- 按钮权限：`useAuth().hasAuth('tenant:add')`；`buttons` 含 `*` 时全部放行
-- 菜单 `hideInMenu`：`1` 显示 / `2` 隐藏（侧栏）；空 `fUrl` 的菜单不进动态路由
+- `/system/*` — 用户管理
+- 动作：`list|add|modify|delete`（及 `detail|status`）；方法仅 `get` / `post`
+- 单机自用：`VITE_AUTH_ROUTE_MODE=static`，登录即全权限，无 Casbin / 角色菜单权限页
 
 ### Constants template
 

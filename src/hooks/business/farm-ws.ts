@@ -1,6 +1,5 @@
 import { onUnmounted, ref } from 'vue';
 import { getToken } from '@/store/modules/auth/shared';
-import { localStg } from '@/utils/storage';
 
 export type FarmWsHandler = (type: string, payload: unknown, raw?: Api.Farm.WsMessage) => void;
 
@@ -23,11 +22,9 @@ function resolveWsUrl(path: string) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
   const token = getToken();
-  const tenantId = localStg.get('tenantId');
 
   const query = new URLSearchParams();
   if (token) query.set('token', token);
-  if (tenantId) query.set('tenantId', String(tenantId));
 
   // Dev HTTP goes through Vite `/proxy-default`; WS must use the same prefix
   // so upgrade is forwarded to the Go backend (not served by Vite itself).

@@ -237,18 +237,12 @@ const local: App.I18n.Schema = {
     'iframe-page': 'Iframe',
     home: 'Home',
     system: 'System',
-    system_tenant: 'Tenant',
-    system_admin: 'Admin',
-    system_role: 'Role',
-    system_menu: 'Menu',
-    system_permission: 'Permission',
-    system_attachment: 'Attachment',
+    system_admin: 'Users',
     farm: 'Farm Management',
     farm_dashboard: 'Farm Overview',
     farm_account: 'Accounts',
     farm_activity: 'Activity',
     farm_analytics: 'Planting Strategy',
-    farm_card: 'Cards',
     farm_friends: 'Friends',
     'farm_game-config': 'Game Config',
     'farm_game-mall': 'Game Mall',
@@ -303,35 +297,6 @@ const local: App.I18n.Schema = {
         title: 'Bind WeChat'
       }
     },
-    home: {
-      branchDesc:
-        'For the convenience of everyone in developing and updating the merge, we have streamlined the code of the main branch, only retaining the homepage menu, and the rest of the content has been moved to the example branch for maintenance. The preview address displays the content of the example branch.',
-      greeting: 'Good morning, {userName}, today is another day full of vitality!',
-      weatherDesc: 'Today is cloudy to clear, 20℃ - 25℃!',
-      projectCount: 'Project Count',
-      todo: 'Todo',
-      message: 'Message',
-      downloadCount: 'Download Count',
-      registerCount: 'Register Count',
-      schedule: 'Work and rest Schedule',
-      study: 'Study',
-      work: 'Work',
-      rest: 'Rest',
-      entertainment: 'Entertainment',
-      visitCount: 'Visit Count',
-      turnover: 'Turnover',
-      dealCount: 'Deal Count',
-      projectNews: {
-        title: 'Project News',
-        moreNews: 'More News',
-        desc1: 'Soybean created the open source project soybean-admin on May 28, 2021!',
-        desc2: 'Yanbowe submitted a bug to soybean-admin, the multi-tab bar will not adapt.',
-        desc3: 'Soybean is ready to do sufficient preparation for the release of soybean-admin!',
-        desc4: 'Soybean is busy writing project documentation for soybean-admin!',
-        desc5: 'Soybean just wrote some of the workbench pages casually, and it was enough to see!'
-      },
-      creativity: 'Creativity'
-    },
     system: {
       common: {
         status: {
@@ -340,27 +305,6 @@ const local: App.I18n.Schema = {
           normal: 'Normal',
           deleted: 'Deleted'
         }
-      },
-      tenant: {
-        title: 'Tenant Management',
-        keyword: 'Keyword',
-        code: 'Tenant Code',
-        name: 'Tenant Name',
-        status: 'Status',
-        maxUsers: 'Max Users',
-        maxAccounts: 'Max Farm Accounts',
-        expireAt: 'Expire At',
-        contactName: 'Contact Name',
-        contactPhone: 'Contact Phone',
-        remark: 'Remark',
-        adminAccount: 'Admin Account',
-        adminPassword: 'Admin Password',
-        adminNickName: 'Admin Nickname',
-        addTenant: 'Add Tenant',
-        editTenant: 'Edit Tenant',
-        toggleStatusConfirm: 'Are you sure to toggle tenant status?',
-        switchPlaceholder: 'Switch tenant',
-        selectRequired: 'Please select a tenant in the header first'
       },
       admin: {
         title: 'Admin Users',
@@ -372,84 +316,10 @@ const local: App.I18n.Schema = {
         realName: 'Real Name',
         phone: 'Phone',
         email: 'Email',
-        roles: 'Roles',
-        tenants: 'Tenants',
         status: 'Status',
         addAdmin: 'Add Admin',
         editAdmin: 'Edit Admin',
-        addPlatformUser: 'Add Platform User',
         toggleStatusConfirm: 'Are you sure to toggle admin status?'
-      },
-      role: {
-        title: 'Role Management',
-        name: 'Role Name',
-        code: 'Role Code',
-        desc: 'Description',
-        parentId: 'Parent Role',
-        rootParent: 'Root Role',
-        typeLabel: 'Role Type',
-        status: 'Status',
-        auth: 'Authorize',
-        addRole: 'Add Role',
-        editRole: 'Edit Role',
-        roleType: {
-          platform: 'Platform Only',
-          tenant: 'Tenant Assignable'
-        }
-      },
-      menu: {
-        title: 'Menu Management',
-        name: 'Name',
-        alias: 'Alias',
-        desc: 'Description',
-        parentId: 'Parent Menu',
-        rootParent: 'Root Menu',
-        typeLabel: 'Resource Type',
-        fUrl: 'Frontend URL',
-        bUrl: 'Backend URL',
-        methods: 'Methods',
-        path: 'Route Path',
-        icon: 'Icon',
-        hideInMenu: 'Sidebar',
-        hideInMenuShow: 'Show',
-        hideInMenuHide: 'Hide',
-        sortOrder: 'Sort Order',
-        status: 'Status',
-        addMenu: 'Add Menu',
-        editMenu: 'Edit Menu',
-        resourceType: {
-          directory: 'Directory',
-          menu: 'Menu',
-          button: 'Button'
-        }
-      },
-      permission: {
-        title: 'Permission Management',
-        apiList: 'API List',
-        rolePolicies: 'Role Policies',
-        hint: 'API List shows bindable backend routes. Role Policies is a read-only Casbin path/method view for troubleshooting. Configure menu auth in Role Management.',
-        method: 'Method',
-        path: 'Path',
-        name: 'Name',
-        source: 'Source',
-        ptype: 'Policy Type',
-        roleId: 'Role',
-        roleIdRequired: 'Please select a role',
-        reload: 'Reload Permission',
-        reloadSuccess: 'Permission reloaded successfully'
-      },
-      attachment: {
-        title: 'Attachment Management',
-        keyword: 'Keyword',
-        originName: 'Original Name',
-        extension: 'Extension',
-        size: 'Size',
-        status: 'Status',
-        upload: 'Upload',
-        uploadSuccess: 'Upload successful',
-        preview: 'Preview',
-        markDeleted: 'Mark Deleted',
-        markDeletedConfirm: 'Are you sure to mark as deleted?'
       }
     },
     farm: {
@@ -700,6 +570,7 @@ const local: App.I18n.Schema = {
         exchangeConfirm: 'Confirm Exchange',
         exchanging: 'Exchanging',
         soldOut: 'Sold out',
+        alreadyExchanged: 'Redeemed',
         notExchangeable: 'Not exchangeable',
         exchangeUnavailable: 'Exchange unavailable',
         claimSolar: 'Claim Solar Term',
@@ -716,6 +587,7 @@ const local: App.I18n.Schema = {
         termIdRequired: 'Term ID required',
         syncedAt: 'Synced At',
         claimSuccess: 'Success',
+        claimRewardsSuccess: 'Claimed: {items}',
         passNodes: 'Pass nodes',
         claimableNodes: 'Claimable nodes',
         shopGoods: 'Shop goods',
@@ -923,32 +795,6 @@ const local: App.I18n.Schema = {
         addItem: 'Add Item',
         editItem: 'Edit Item',
         deleteItem: 'Delete Item'
-      },
-      card: {
-        title: 'Card Management',
-        keyword: 'Keyword',
-        code: 'Code',
-        cardType: {
-          label: 'Type',
-          time: 'Duration',
-          quota: 'Quota'
-        },
-        cardStatus: {
-          label: 'Status',
-          unused: 'Unused',
-          used: 'Used',
-          disabled: 'Disabled'
-        },
-        value: 'Value',
-        description: 'Description',
-        count: 'Generate Count',
-        usedByTenant: 'Used By Tenant',
-        usedAt: 'Used At',
-        addCard: 'Generate Cards',
-        redeem: 'Redeem Card',
-        redeemTitle: 'Redeem Card',
-        redeemSuccess: 'Redeemed successfully',
-        redeemCodePlaceholder: 'Enter card code'
       }
     }
   },

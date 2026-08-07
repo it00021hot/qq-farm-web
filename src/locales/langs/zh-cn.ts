@@ -233,18 +233,12 @@ const local: App.I18n.Schema = {
     'iframe-page': '外链页面',
     home: '首页',
     system: '系统管理',
-    system_tenant: '租户管理',
-    system_admin: '管理员',
-    system_role: '角色管理',
-    system_menu: '菜单管理',
-    system_permission: '权限管理',
-    system_attachment: '附件管理',
+    system_admin: '用户管理',
     farm: '农场管理',
     farm_dashboard: '农场概览',
     farm_account: '账号管理',
     farm_activity: '活动中心',
     farm_analytics: '种植策略',
-    farm_card: '卡密管理',
     farm_friends: '好友列表',
     'farm_game-config': '游戏配置',
     'farm_game-mall': '游戏商城',
@@ -299,35 +293,6 @@ const local: App.I18n.Schema = {
         title: '绑定微信'
       }
     },
-    home: {
-      branchDesc:
-        '为了方便大家开发和更新合并，我们对main分支的代码进行了精简，只保留了首页菜单，其余内容已移至example分支进行维护。预览地址显示的内容即为example分支的内容。',
-      greeting: '早安，{userName}, 今天又是充满活力的一天!',
-      weatherDesc: '今日多云转晴，20℃ - 25℃!',
-      projectCount: '项目数',
-      todo: '待办',
-      message: '消息',
-      downloadCount: '下载量',
-      registerCount: '注册量',
-      schedule: '作息安排',
-      study: '学习',
-      work: '工作',
-      rest: '休息',
-      entertainment: '娱乐',
-      visitCount: '访问量',
-      turnover: '成交额',
-      dealCount: '成交量',
-      projectNews: {
-        title: '项目动态',
-        moreNews: '更多动态',
-        desc1: 'Soybean 在2021年5月28日创建了开源项目 soybean-admin!',
-        desc2: 'Yanbowe 向 soybean-admin 提交了一个bug，多标签栏不会自适应。',
-        desc3: 'Soybean 准备为 soybean-admin 的发布做充分的准备工作!',
-        desc4: 'Soybean 正在忙于为soybean-admin写项目说明文档！',
-        desc5: 'Soybean 刚才把工作台页面随便写了一些，凑合能看了！'
-      },
-      creativity: '创意'
-    },
     system: {
       common: {
         status: {
@@ -336,27 +301,6 @@ const local: App.I18n.Schema = {
           normal: '正常',
           deleted: '已删除'
         }
-      },
-      tenant: {
-        title: '租户管理',
-        keyword: '关键词',
-        code: '租户编码',
-        name: '租户名称',
-        status: '状态',
-        maxUsers: '最大用户数',
-        maxAccounts: '农场账号上限',
-        expireAt: '过期时间',
-        contactName: '联系人',
-        contactPhone: '联系电话',
-        remark: '备注',
-        adminAccount: '管理员账号',
-        adminPassword: '管理员密码',
-        adminNickName: '管理员昵称',
-        addTenant: '新增租户',
-        editTenant: '编辑租户',
-        toggleStatusConfirm: '确认切换租户状态吗？',
-        switchPlaceholder: '切换租户',
-        selectRequired: '请先在顶栏选择租户'
       },
       admin: {
         title: '管理员',
@@ -368,84 +312,10 @@ const local: App.I18n.Schema = {
         realName: '姓名',
         phone: '手机号',
         email: '邮箱',
-        roles: '角色',
-        tenants: '绑定租户',
         status: '状态',
         addAdmin: '新增管理员',
         editAdmin: '编辑管理员',
-        addPlatformUser: '新增平台用户',
         toggleStatusConfirm: '确认切换管理员状态吗？'
-      },
-      role: {
-        title: '角色管理',
-        name: '角色名称',
-        code: '角色编码',
-        desc: '描述',
-        parentId: '上级角色',
-        rootParent: '顶级角色',
-        typeLabel: '角色类型',
-        status: '状态',
-        auth: '授权',
-        addRole: '新增角色',
-        editRole: '编辑角色',
-        roleType: {
-          platform: '平台专用',
-          tenant: '可赋给租户'
-        }
-      },
-      menu: {
-        title: '菜单管理',
-        name: '名称',
-        alias: '别名',
-        desc: '描述',
-        parentId: '上级菜单',
-        rootParent: '顶级菜单',
-        typeLabel: '资源类型',
-        fUrl: '前端路径',
-        bUrl: '后端路径',
-        methods: '请求方法',
-        path: '路由路径',
-        icon: '图标',
-        hideInMenu: '侧栏显示',
-        hideInMenuShow: '显示',
-        hideInMenuHide: '隐藏',
-        sortOrder: '排序',
-        status: '状态',
-        addMenu: '新增菜单',
-        editMenu: '编辑菜单',
-        resourceType: {
-          directory: '目录',
-          menu: '菜单',
-          button: '按钮'
-        }
-      },
-      permission: {
-        title: '权限管理',
-        apiList: 'API 列表',
-        rolePolicies: '角色策略',
-        hint: 'API 列表是系统可绑定的后端路由；角色策略只读展示某角色在 Casbin 中的 path/method 规则，用于排查授权。授权请在「角色管理」里配置菜单。',
-        method: '方法',
-        path: '路径',
-        name: '名称',
-        source: '来源',
-        ptype: '策略类型',
-        roleId: '角色',
-        roleIdRequired: '请选择角色',
-        reload: '重载权限',
-        reloadSuccess: '权限重载成功'
-      },
-      attachment: {
-        title: '附件管理',
-        keyword: '关键词',
-        originName: '原始文件名',
-        extension: '扩展名',
-        size: '大小',
-        status: '状态',
-        upload: '上传',
-        uploadSuccess: '上传成功',
-        preview: '预览',
-        markDeleted: '标记删除',
-        markDeletedConfirm: '确认标记为已删除吗？'
       }
     },
     farm: {
@@ -696,6 +566,7 @@ const local: App.I18n.Schema = {
         exchangeConfirm: '确认兑换',
         exchanging: '正在处理兑换',
         soldOut: '已售罄',
+        alreadyExchanged: '已兑换',
         notExchangeable: '不可兑换',
         exchangeUnavailable: '暂不可兑换',
         claimSolar: '领取节令',
@@ -712,6 +583,7 @@ const local: App.I18n.Schema = {
         termIdRequired: '请输入节令ID',
         syncedAt: '同步时间',
         claimSuccess: '操作成功',
+        claimRewardsSuccess: '领取成功：{items}',
         passNodes: '通行证节点',
         claimableNodes: '可领节点',
         shopGoods: '商店商品',
@@ -920,32 +792,6 @@ const local: App.I18n.Schema = {
         addItem: '录入道具',
         editItem: '编辑道具',
         deleteItem: '删除道具'
-      },
-      card: {
-        title: '卡密管理',
-        keyword: '关键词',
-        code: '卡密',
-        cardType: {
-          label: '类型',
-          time: '时长卡',
-          quota: '额度卡'
-        },
-        cardStatus: {
-          label: '状态',
-          unused: '未使用',
-          used: '已使用',
-          disabled: '已禁用'
-        },
-        value: '面值',
-        description: '描述',
-        count: '生成数量',
-        usedByTenant: '使用租户',
-        usedAt: '使用时间',
-        addCard: '生成卡密',
-        redeem: '兑换卡密',
-        redeemTitle: '兑换卡密',
-        redeemSuccess: '兑换成功',
-        redeemCodePlaceholder: '请输入卡密'
       }
     }
   },

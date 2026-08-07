@@ -16,16 +16,9 @@ declare namespace Api {
 
     type FertilizerBuyMode = 'threshold' | 'unlimited';
 
-    /** card type — 1 duration days / 2 account quota */
-    type CardType = 1 | 2;
-
-    /** card status — 1 unused / 2 used / 3 disabled */
-    type CardStatus = 1 | 2 | 3;
-
     /** farm account */
     type Account = {
       id: number;
-      tenantId: number;
       name: string;
       code: string;
       platform: Platform | string;
@@ -457,6 +450,15 @@ declare namespace Api {
       capabilities?: Record<string, boolean>;
       actions?: Record<string, ActivityAction>;
       errors?: Record<string, string>;
+      rewards?: Array<{
+        id?: string | number;
+        name?: string;
+        count?: string | number;
+        image?: string;
+      }>;
+      message?: string;
+      outcome?: string;
+      noClaimable?: boolean;
       snapshot?: Omit<ActivitySnapshot, 'accountId' | 'states' | 'snapshot'>;
     };
 
@@ -500,37 +502,6 @@ declare namespace Api {
       days?: number;
       sort?: string;
     }>;
-
-    /** card */
-    type Card = {
-      id: number;
-      code: string;
-      cardType: CardType;
-      value: number;
-      description: string;
-      status: CardStatus;
-      usedByTenant: number;
-      usedAt: number;
-      createdAt: number;
-      updatedAt: number;
-    };
-
-    type CardSearchParams = CommonType.RecordNullable<
-      Pick<Card, 'status' | 'cardType'> & CommonSearchParams & { keyword?: string }
-    >;
-
-    type CardList = Common.PaginatingQueryRecord<Card>;
-
-    type CardCreateParams = {
-      cardType: CardType;
-      value: number;
-      description?: string;
-      count?: number;
-    };
-
-    type CardRedeemParams = {
-      code: string;
-    };
 
     /** game config catalog (Plant.json / ItemInfo.json) */
     type GameConfigSeed = {
@@ -655,7 +626,6 @@ declare namespace Api {
       type: string;
       payload?: T;
       accountId?: number;
-      tenantId?: number;
     };
 
     /** In-memory run-log entry (GET /farm/logs) */

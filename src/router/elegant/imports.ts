@@ -23,7 +23,6 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   farm_account: () => import("@/views/farm/account/index.vue"),
   farm_activity: () => import("@/views/farm/activity/index.vue"),
   farm_analytics: () => import("@/views/farm/analytics/index.vue"),
-  farm_card: () => import("@/views/farm/card/index.vue"),
   farm_dashboard: () => import("@/views/farm/dashboard/index.vue"),
   farm_friends: () => import("@/views/farm/friends/index.vue"),
   "farm_game-config": () => import("@/views/farm/game-config/index.vue"),
@@ -33,9 +32,4 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   farm_settings: () => import("@/views/farm/settings/index.vue"),
   home: () => import("@/views/home/index.vue"),
   system_admin: () => import("@/views/system/admin/index.vue"),
-  system_attachment: () => import("@/views/system/attachment/index.vue"),
-  system_menu: () => import("@/views/system/menu/index.vue"),
-  system_permission: () => import("@/views/system/permission/index.vue"),
-  system_role: () => import("@/views/system/role/index.vue"),
-  system_tenant: () => import("@/views/system/tenant/index.vue"),
 };

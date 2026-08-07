@@ -225,23 +225,6 @@ export function fetchGetFarmAnalyticsDetail(params?: Api.Farm.AnalyticsSearchPar
   });
 }
 
-/** ========== Card ========== */
-export function fetchGetFarmCardList(params?: Api.Farm.CardSearchParams) {
-  return request<Api.Farm.CardList>({
-    url: '/farm/card/list',
-    method: 'get',
-    params
-  });
-}
-
-export function fetchAddFarmCard(data: Api.Farm.CardCreateParams) {
-  return request({ url: '/farm/card/add', method: 'post', data });
-}
-
-export function fetchRedeemFarmCard(data: Api.Farm.CardRedeemParams) {
-  return request({ url: '/farm/card/redeem', method: 'post', data });
-}
-
 /** ========== Game Config Catalog ========== */
 export function fetchGetFarmGameConfigSeeds() {
   return request<Api.Farm.GameConfigSeed[]>({

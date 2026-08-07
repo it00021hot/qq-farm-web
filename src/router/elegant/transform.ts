@@ -170,7 +170,6 @@ const routeMap: RouteMap = {
   "farm_account": "/farm/account",
   "farm_activity": "/farm/activity",
   "farm_analytics": "/farm/analytics",
-  "farm_card": "/farm/card",
   "farm_dashboard": "/farm/dashboard",
   "farm_friends": "/farm/friends",
   "farm_game-config": "/farm/game-config",
@@ -182,12 +181,7 @@ const routeMap: RouteMap = {
   "iframe-page": "/iframe-page/:url",
   "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
   "system": "/system",
-  "system_admin": "/system/admin",
-  "system_attachment": "/system/attachment",
-  "system_menu": "/system/menu",
-  "system_permission": "/system/permission",
-  "system_role": "/system/role",
-  "system_tenant": "/system/tenant"
+  "system_admin": "/system/admin"
 };
 
 /**

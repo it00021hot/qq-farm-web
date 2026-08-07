@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { enableStatusOptions, translateNumberOptions } from '@/constants/business';
-import { fetchCreateAdmin, fetchGetAssignableRoles, fetchUpdateAdmin } from '@/service/api';
+import { fetchCreateAdmin, fetchUpdateAdmin } from '@/service/api';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import { $t } from '@/locales';
 
@@ -43,7 +43,6 @@ type Model = {
   realName: string;
   phone: string;
   email: string;
-  roleIdList: number[];
   status: Api.SystemManage.EnableStatus;
 };
 
@@ -57,7 +56,6 @@ function createDefaultModel(): Model {
     realName: '',
     phone: '',
     email: '',
-    roleIdList: [],
     status: 1
   };
 }
@@ -65,8 +63,7 @@ function createDefaultModel(): Model {
 const rules = computed(() => {
   const base: Record<string, App.Global.FormRule | App.Global.FormRule[]> = {
     nickName: defaultRequiredRule,
-    status: defaultRequiredRule,
-    roleIdList: defaultRequiredRule
+    status: defaultRequiredRule
   };
 
   if (props.operateType === 'add') {
@@ -77,33 +74,13 @@ const rules = computed(() => {
   return base;
 });
 
-const roleOptions = ref<CommonType.Option<number, string>[]>([]);
 const statusOptions = computed(() => translateNumberOptions(enableStatusOptions));
-
-async function getRoleOptions() {
-  const { error, data } = await fetchGetAssignableRoles();
-
-  if (!error) {
-    roleOptions.value = data.map(item => ({
-      label: item.name,
-      value: item.id
-    }));
-  }
-}
-
-function parseRoleIds(roleIds: string): number[] {
-  if (!roleIds) return [];
-  return roleIds
-    .split(',')
-    .map(id => Number(id.trim()))
-    .filter(id => !Number.isNaN(id));
-}
 
 function handleInitModel() {
   model.value = createDefaultModel();
 
   if (props.operateType === 'edit' && props.rowData) {
-    const { id, account, nickName, realName, phone, email, roleIds, status } = props.rowData;
+    const { id, account, nickName, realName, phone, email, status } = props.rowData;
     Object.assign(model.value, {
       id,
       account,
@@ -111,7 +88,6 @@ function handleInitModel() {
       realName: realName || '',
       phone: phone || '',
       email: email || '',
-      roleIdList: parseRoleIds(roleIds),
       status
     });
   }
@@ -124,8 +100,6 @@ function closeDrawer() {
 async function handleSubmit() {
   await validate();
 
-  const roleIds = model.value.roleIdList.join(',');
-
   if (props.operateType === 'add') {
     const { error } = await fetchCreateAdmin({
       account: model.value.account,
@@ -134,7 +108,7 @@ async function handleSubmit() {
       realName: model.value.realName || undefined,
       phone: model.value.phone || undefined,
       email: model.value.email || undefined,
-      roleIds,
+      roleIds: '1',
       status: model.value.status
     });
 
@@ -150,7 +124,7 @@ async function handleSubmit() {
       realName: model.value.realName || undefined,
       phone: model.value.phone || undefined,
       email: model.value.email || undefined,
-      roleIds,
+      roleIds: '1',
       status: model.value.status,
       password: model.value.password || undefined
     });
@@ -167,7 +141,6 @@ watch(visible, () => {
   if (visible.value) {
     handleInitModel();
     restoreValidation();
-    getRoleOptions();
   }
 });
 </script>
@@ -206,14 +179,6 @@ watch(visible, () => {
         </NFormItem>
         <NFormItem :label="$t('page.system.admin.email')" path="email">
           <NInput v-model:value="model.email" :placeholder="$t('page.system.admin.email')" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.admin.roles')" path="roleIdList">
-          <NSelect
-            v-model:value="model.roleIdList"
-            :options="roleOptions"
-            multiple
-            :placeholder="$t('page.system.admin.roles')"
-          />
         </NFormItem>
         <NFormItem :label="$t('page.system.admin.status')" path="status">
           <NRadioGroup v-model:value="model.status">

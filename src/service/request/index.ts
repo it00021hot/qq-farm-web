@@ -29,15 +29,6 @@ export const request = createFlatRequest(
       const Authorization = getAuthorization();
       Object.assign(config.headers, { Authorization });
 
-      try {
-        const tenantId = localStg.get('tenantId');
-        if (tenantId !== null && tenantId !== undefined && String(tenantId) !== '' && String(tenantId) !== '0') {
-          Object.assign(config.headers, { 'X-Tenant-ID': String(tenantId) });
-        }
-      } catch {
-        // ignore
-      }
-
       return config;
     },
     isBackendSuccess(response) {

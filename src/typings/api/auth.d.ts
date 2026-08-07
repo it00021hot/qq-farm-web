@@ -8,7 +8,6 @@ declare namespace Api {
     interface LoginToken {
       token: string;
       refreshToken: string;
-      tenantId?: number;
     }
 
     interface UserInfo {
@@ -17,7 +16,6 @@ declare namespace Api {
       nickName?: string;
       roles: string[];
       buttons: string[];
-      tenantId: number;
       uuid?: string;
       roleIds?: string[];
     }
