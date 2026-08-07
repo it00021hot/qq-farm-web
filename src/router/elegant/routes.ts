@@ -113,6 +113,24 @@ export const generatedRoutes: GeneratedRoute[] = [
         }
       },
       {
+        name: 'farm_game-mall',
+        path: '/farm/game-mall',
+        component: 'view.farm_game-mall',
+        meta: {
+          title: 'farm_game-mall',
+          i18nKey: 'route.farm_game-mall'
+        }
+      },
+      {
+        name: 'farm_mystery-shop',
+        path: '/farm/mystery-shop',
+        component: 'view.farm_mystery-shop',
+        meta: {
+          title: 'farm_mystery-shop',
+          i18nKey: 'route.farm_mystery-shop'
+        }
+      },
+      {
         name: 'farm_personal',
         path: '/farm/personal',
         component: 'view.farm_personal',

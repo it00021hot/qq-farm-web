@@ -619,5 +619,97 @@ declare namespace Api {
       keyword?: string;
       limit?: number;
     };
+
+    type WxLoginTask = {
+      task_id: string;
+      app_id: string;
+      status: string;
+      expires_at: number;
+      qr_url?: string;
+    };
+
+    type WxLoginCodeResult = {
+      openid: string;
+      app_id: string;
+      code: string;
+      err_msg: string;
+    };
+
+    type CommerceItem = {
+      id: number;
+      count: number;
+      name: string;
+      image: string;
+      rarity: number;
+    };
+
+    type PurchaseLimit = {
+      type: number;
+      bought: number;
+      max: number;
+      remaining: number | null;
+    };
+
+    type MallPrice = CommerceItem & {
+      balance: number | null;
+    };
+
+    type MallGoods = {
+      id: number;
+      name: string;
+      type: number;
+      rewards: CommerceItem[];
+      price: MallPrice;
+      isFree: boolean;
+      limit: PurchaseLimit | null;
+      isLimited: boolean;
+      discountText: string;
+      isDiscounted: boolean;
+      discountEndTime: number;
+      available: boolean;
+      purchasable: boolean;
+    };
+
+    type MallCurrency = CommerceItem & {
+      balanceKnown: boolean;
+    };
+
+    type MallCatalog = {
+      slotType: number;
+      subSlotType: number;
+      serverTime: number;
+      refreshCountdown: number;
+      currencies: MallCurrency[];
+      goods: MallGoods[];
+    };
+
+    type MallPurchaseResult = {
+      purchase: {
+        goodsId: number;
+        count: number;
+        rewards: CommerceItem[];
+        limit: PurchaseLimit | null;
+      };
+      catalog: MallCatalog;
+    };
+
+    type MysteryShop = {
+      active: boolean;
+      serverTime: number;
+      activeTime?: number;
+      expireTime?: number;
+      npc: {
+        id: number;
+        reward: CommerceItem;
+        stock: number;
+        price: MallPrice;
+        originalPrice: number;
+        discountPercent: number;
+      } | null;
+    };
+
+    type DiamondBalance = {
+      diamond: number;
+    };
   }
 }

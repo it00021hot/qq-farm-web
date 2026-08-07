@@ -298,3 +298,67 @@ export function fetchModifyFarmGameConfigItem(data: Api.Farm.GameConfigItemWrite
 export function fetchDeleteFarmGameConfigItem(id: number) {
   return request({ url: '/farm/game-config/item/delete', method: 'post', data: { id } });
 }
+
+/** ========== Wx Login ========== */
+export function fetchCreateFarmWxLoginTask(appId = 'wx5306c5978fdb76e4') {
+  return request<Api.Farm.WxLoginTask>({
+    url: '/farm/wx-login/tasks',
+    method: 'post',
+    data: { app_id: appId }
+  });
+}
+
+export function fetchFarmWxLoginStatus(taskId: string) {
+  return request<Api.Farm.WxLoginTask>({
+    url: `/farm/wx-login/tasks/${taskId}/status`,
+    method: 'get',
+    timeout: 40000
+  });
+}
+
+export function fetchConfirmFarmWxLogin(taskId: string) {
+  return request<Api.Farm.WxLoginTask>({
+    url: `/farm/wx-login/tasks/${taskId}/confirm`,
+    method: 'post'
+  });
+}
+
+export function fetchFarmWxLoginCode(taskId: string) {
+  return request<Api.Farm.WxLoginCodeResult>({
+    url: `/farm/wx-login/tasks/${taskId}/code`,
+    method: 'post'
+  });
+}
+
+/** ========== Commerce ========== */
+export function fetchGetFarmGameMall(params: { accountId: number; slotType?: number; subSlotType?: number }) {
+  return request<Api.Farm.MallCatalog>({
+    url: '/farm/game-mall',
+    method: 'get',
+    params
+  });
+}
+
+export function fetchPurchaseFarmGameMall(data: { accountId: number; goodsId: number; count: number }) {
+  return request<Api.Farm.MallPurchaseResult>({
+    url: '/farm/game-mall/purchase',
+    method: 'post',
+    data
+  });
+}
+
+export function fetchGetFarmMysteryShop(accountId: number) {
+  return request<Api.Farm.MysteryShop>({
+    url: '/farm/mystery-shop',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
+export function fetchGetFarmDiamond(accountId: number) {
+  return request<Api.Farm.DiamondBalance>({
+    url: '/farm/diamond',
+    method: 'get',
+    params: { accountId }
+  });
+}

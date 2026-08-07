@@ -182,7 +182,13 @@ onUnmounted(() => {
               </template>
               {{ $t('common.add') }}
             </NButton>
-            <NButton v-if="hasAuth('platform-user:add')" size="small" ghost type="info" @click="openPlatformDrawer">
+            <NButton
+              v-if="tenantStore.isPlatformUser && hasAuth('platform-user:add')"
+              size="small"
+              ghost
+              type="info"
+              @click="openPlatformDrawer"
+            >
               {{ $t('page.system.admin.addPlatformUser') }}
             </NButton>
           </template>

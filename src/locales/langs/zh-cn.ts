@@ -247,6 +247,8 @@ const local: App.I18n.Schema = {
     farm_card: '卡密管理',
     farm_friends: '好友列表',
     'farm_game-config': '游戏配置',
+    'farm_game-mall': '游戏商城',
+    'farm_mystery-shop': '神秘商人',
     farm_personal: '个人农场',
     farm_settings: '自动化设置'
   },

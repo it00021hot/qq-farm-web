@@ -28,6 +28,8 @@ declare module "@elegant-router/types" {
     "farm_dashboard": "/farm/dashboard";
     "farm_friends": "/farm/friends";
     "farm_game-config": "/farm/game-config";
+    "farm_game-mall": "/farm/game-mall";
+    "farm_mystery-shop": "/farm/mystery-shop";
     "farm_personal": "/farm/personal";
     "farm_settings": "/farm/settings";
     "home": "/home";
@@ -107,6 +109,8 @@ declare module "@elegant-router/types" {
     | "farm_dashboard"
     | "farm_friends"
     | "farm_game-config"
+    | "farm_game-mall"
+    | "farm_mystery-shop"
     | "farm_personal"
     | "farm_settings"
     | "home"

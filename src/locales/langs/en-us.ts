@@ -251,6 +251,8 @@ const local: App.I18n.Schema = {
     farm_card: 'Cards',
     farm_friends: 'Friends',
     'farm_game-config': 'Game Config',
+    'farm_game-mall': 'Game Mall',
+    'farm_mystery-shop': 'Mystery Shop',
     farm_personal: 'Personal Farm',
     farm_settings: 'Automation'
   },

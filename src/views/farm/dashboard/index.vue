@@ -6,6 +6,7 @@ import {
   fetchClearFarmLogs,
   fetchGetFarmActivitySnapshot,
   fetchGetFarmBag,
+  fetchGetFarmDiamond,
   fetchGetFarmLogs,
   fetchGetFarmStatusDetail
 } from '@/service/api';
@@ -56,6 +57,7 @@ const status = ref<Api.Farm.Status | null>(null);
 const detailLoading = ref(false);
 const bagLoading = ref(false);
 const bagItems = ref<Api.Farm.BagItem[]>([]);
+const diamond = ref<number | null>(null);
 const travelPass = ref<{
   title?: string;
   level?: number;
@@ -412,15 +414,20 @@ async function loadBag() {
   if (!farmAccountStore.currentAccountId || !isOnline.value) {
     bagItems.value = [];
     couponBaseline.value = null;
+    diamond.value = null;
     return;
   }
   bagLoading.value = true;
   try {
-    const { data, error } = await fetchGetFarmBag(farmAccountStore.currentAccountId);
-    if (!error && data) {
-      bagItems.value = data.items || [];
+    const accountId = farmAccountStore.currentAccountId;
+    const [bagRes, diamondRes] = await Promise.all([fetchGetFarmBag(accountId), fetchGetFarmDiamond(accountId)]);
+    if (!bagRes.error && bagRes.data) {
+      bagItems.value = bagRes.data.items || [];
       const nextCoupon = Number(bagItems.value.find(item => Number(item.id) === 1002)?.count || 0);
       if (couponBaseline.value == null) couponBaseline.value = nextCoupon;
+    }
+    if (!diamondRes.error && diamondRes.data) {
+      diamond.value = diamondRes.data.diamond;
     }
   } finally {
     bagLoading.value = false;
@@ -637,7 +644,7 @@ onUnmounted(() => {
 
         <NGi>
           <NCard :bordered="false" size="small" class="card-wrapper h-full">
-            <div class="grid grid-cols-3 gap-8px">
+            <div class="grid grid-cols-4 gap-8px">
               <div>
                 <div class="text-12px text-gray-500">{{ $t('page.farm.dashboard.gold') }}</div>
                 <div class="text-20px text-warning font-semibold">{{ status?.gold ?? 0 }}</div>
@@ -659,6 +666,10 @@ onUnmounted(() => {
                 >
                   {{ sessionCouponGained > 0 ? '+' : '' }}{{ sessionCouponGained }}
                 </div>
+              </div>
+              <div class="text-center">
+                <div class="text-12px text-gray-500">钻石</div>
+                <div class="text-20px text-info font-semibold">{{ isOnline ? (diamond ?? '-') : '-' }}</div>
               </div>
               <div class="text-right">
                 <div class="text-12px text-gray-500">{{ $t('page.farm.dashboard.goldBean') }}</div>
