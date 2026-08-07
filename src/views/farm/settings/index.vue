@@ -825,7 +825,7 @@ onMounted(async () => {
             </template>
 
             <NDivider title-placement="left">{{ $t('page.farm.settings.intervals') }}</NDivider>
-            <div class="grid gap-12px sm:grid-cols-2 md:grid-cols-3">
+            <div class="grid max-w-640px gap-12px sm:grid-cols-2">
               <NFormItem :label="$t('page.farm.settings.farmMin')">
                 <NInputNumber v-model:value="intervals.farmMin" class="w-full" :min="1" />
               </NFormItem>

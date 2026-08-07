@@ -126,6 +126,22 @@ export function fetchSellFarmBag(data: Api.Farm.BagSellParams) {
   });
 }
 
+export function fetchUseFarmBag(data: Api.Farm.BagUseParams) {
+  return request<Api.Farm.BagUseResult>({
+    url: '/farm/bag/use',
+    method: 'post',
+    data
+  });
+}
+
+export function fetchGetFarmDailyGifts(accountId: number) {
+  return request<Api.Farm.DailyGiftsResponse>({
+    url: '/farm/daily-gifts',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
 /** ========== Friend ========== */
 export function fetchGetFarmFriendList(params?: Api.Farm.FriendSearchParams) {
   return request<Api.Farm.FriendList>({

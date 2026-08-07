@@ -133,7 +133,11 @@ const shopGoods = computed(() => (shop.value.goods as ShopGoods[]) || []);
 const shopCategories = computed(() => (shop.value.categories as Array<{ id?: string; name?: string }>) || []);
 const shopBalance = computed(() => {
   if (shop.value.balanceKnown === false) return '--';
-  return String(shop.value.balance ?? '--');
+  const currencies = (shop.value.currencies as Array<{ balance?: string | number | null }> | undefined) || [];
+  const currency = shop.value.currency as { balance?: string | number | null; count?: string | number } | undefined;
+  const value = shop.value.balance ?? currencies[0]?.balance ?? currency?.balance ?? currency?.count;
+  if (value === undefined || value === null || value === '') return '--';
+  return String(value);
 });
 const visibleShopGoods = computed(() => {
   if (shopCategory.value === '__all__') return shopGoods.value;

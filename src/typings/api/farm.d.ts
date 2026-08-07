@@ -358,6 +358,62 @@ declare namespace Api {
       ok: boolean;
     };
 
+    type BagUseParams = {
+      accountId: number;
+      itemId: number;
+      count: number;
+    };
+
+    type BagUseResult = {
+      accountId: number;
+      itemId: number;
+      count: number;
+      ok: boolean;
+    };
+
+    type DailyGiftCard = {
+      key: string;
+      label: string;
+      enabled: boolean;
+      doneToday: boolean;
+      lastAt?: number;
+      completedCount?: number;
+      totalCount?: number;
+      mode?: string;
+      checkStatus?: string;
+      canShare?: boolean | null;
+      hasGift?: boolean | null;
+      canClaim?: boolean | null;
+      hasCard?: boolean | null;
+      hasClaimable?: boolean | null;
+      result?: string;
+    };
+
+    type GrowthTaskRow = {
+      id: number;
+      desc: string;
+      progress: number;
+      totalProgress: number;
+      isClaimed: boolean;
+      isUnlocked: boolean;
+      isCompleted: boolean;
+    };
+
+    type GrowthTaskOverview = {
+      key: string;
+      label: string;
+      doneToday: boolean;
+      completedCount: number;
+      totalCount: number;
+      tasks: GrowthTaskRow[];
+    };
+
+    type DailyGiftsResponse = {
+      date: string;
+      growth: GrowthTaskOverview;
+      gifts: DailyGiftCard[];
+    };
+
     /** account-scoped shop seeds (settings preview / preferred select) */
     type AvailableShopSeed = {
       seedId: number;

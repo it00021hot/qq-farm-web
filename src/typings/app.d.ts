@@ -756,6 +756,10 @@ declare namespace App {
             title: string;
             landsTitle: string;
             bagTitle: string;
+            taskTitle: string;
+            tabFarm: string;
+            tabBag: string;
+            tabTask: string;
             notRunning: string;
             summaryHarvestable: string;
             summaryGrowing: string;
@@ -773,6 +777,15 @@ declare namespace App {
             itemName: string;
             itemCount: string;
             itemPrice: string;
+            bagCatAll: string;
+            bagCatFruit: string;
+            bagCatSeed: string;
+            bagCatTool: string;
+            bagCatOther: string;
+            use: string;
+            useConfirm: string;
+            useSuccess: string;
+            useFailed: string;
             sell: string;
             sellConfirm: string;
             sellSuccess: string;
@@ -782,6 +795,20 @@ declare namespace App {
             batchSellConfirm: string;
             batchSellSuccess: string;
             batchSellEmpty: string;
+            dailyGiftsTitle: string;
+            growthTasksTitle: string;
+            giftDone: string;
+            giftWaiting: string;
+            giftDisabled: string;
+            giftNotOpened: string;
+            giftNeedLogin: string;
+            giftEmpty: string;
+            growthEmpty: string;
+            growthDone: string;
+            growthProgress: string;
+            growthInProgress: string;
+            growthCompleted: string;
+            nextRefresh: string;
             operateSuccess: string;
             operateFailed: string;
             op: {
