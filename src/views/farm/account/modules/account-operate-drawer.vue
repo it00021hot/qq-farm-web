@@ -7,7 +7,8 @@ import {
   fetchCreateFarmWxLoginTask,
   fetchFarmWxLoginCode,
   fetchFarmWxLoginStatus,
-  fetchModifyFarmAccount
+  fetchModifyFarmAccount,
+  fetchStartFarmAccount
 } from '@/service/api';
 import { getAuthorization } from '@/service/request/shared';
 import { getServiceBaseURL } from '@/utils/service';
@@ -225,7 +226,7 @@ async function getWxCodeAndSave() {
     }
     window.$message?.success($t('common.updateSuccess'));
   } else {
-    const { error: addError } = await fetchAddFarmAccount({
+    const { data: added, error: addError } = await fetchAddFarmAccount({
       name,
       code,
       platform: 'wx',
@@ -234,7 +235,17 @@ async function getWxCodeAndSave() {
     if (addError) {
       throw new Error((addError as any)?.message || '保存账号失败');
     }
-    window.$message?.success($t('common.addSuccess'));
+    // QR add: start running immediately (code-paste add still requires manual start).
+    if (added?.id) {
+      const { error: startError } = await fetchStartFarmAccount(added.id);
+      if (startError) {
+        window.$message?.warning($t('common.addSuccess') + '，自动启动失败，请手动点击启动');
+      } else {
+        window.$message?.success($t('common.addSuccess') + '，已自动启动');
+      }
+    } else {
+      window.$message?.success($t('common.addSuccess'));
+    }
   }
   closeDrawer();
   emit('submitted');

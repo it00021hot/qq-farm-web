@@ -22,7 +22,7 @@ export function fetchGetFarmAccountList(params?: Api.Farm.AccountSearchParams) {
 }
 
 export function fetchAddFarmAccount(data: Api.Farm.AccountCreateParams) {
-  return request({ url: '/farm/account/add', method: 'post', data });
+  return request<Api.Farm.Account>({ url: '/farm/account/add', method: 'post', data });
 }
 
 export function fetchModifyFarmAccount(data: Api.Farm.AccountUpdateParams) {
