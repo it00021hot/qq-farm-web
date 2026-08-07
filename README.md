@@ -4,7 +4,9 @@ QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/�
 
 基于 [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin)（Vue 3 + Vite + TypeScript + Naive UI + UnoCSS）改造；业务页面在 `src/views/farm`。
 
-配套后端：[`../qq-farm-core`](../qq-farm-core)。
+- 仓库：[github.com/it00021hot/qq-farm-web](https://github.com/it00021hot/qq-farm-web)
+- 配套后端：[`../qq-farm-core`](../qq-farm-core) · [GitHub](https://github.com/it00021hot/qq-farm-core)
+- 桌面嵌入构建：配合 [`../qq-farm-desktop`](../qq-farm-desktop) 使用 `pnpm build:desktop`
 
 <span>中文 | <a href="./README.en_US.md">English</a></span>
 
@@ -28,7 +30,7 @@ QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/�
 ## 技术栈
 
 - Vue 3、Vite、TypeScript、Pinia、Naive UI、UnoCSS
-- 静态扁平菜单（仅登录鉴权，无后端菜单/RBAC）
+- 静态扁平菜单（仅登录鉴权，无后端菜单 / RBAC）
 - 请求封装对接 qq-farm-core（成功码 `0`，Token 刷新等）
 
 ## 环境要求
@@ -52,13 +54,16 @@ VITE_SERVICE_BASE_URL=http://127.0.0.1:9528
 请先启动 qq-farm-core（`make run` 或 `go run ./cmd/app -e=dev -p=9528`）。
 
 ```bash
-pnpm build        # 生产构建
-pnpm build:test   # 测试环境构建
+pnpm build           # 生产构建
+pnpm build:test      # 测试环境构建
+pnpm build:desktop   # Wails 桌面嵌入（.env.desktop）
 pnpm lint
-pnpm gen-route    # 重新生成路由声明
+pnpm gen-route       # 重新生成路由声明
 ```
 
 开发代理由 `VITE_HTTP_PROXY=Y` 控制；改后端端口时同步修改 `.env.test` / `.env.prod`。
+
+桌面模式（`.env.desktop`）：`VITE_IS_DESKTOP=Y`、hash 路由、直连 `http://127.0.0.1:9528`。
 
 ## 目录结构（业务相关）
 
@@ -67,18 +72,20 @@ src/
   views/farm/          # 农场业务页
     account/ dashboard/ personal/ friends/
     activity/ settings/ game-mall/ mystery-shop/
-    game-config/ analytics/ card/
+    game-config/ analytics/
   views/system/        # 用户管理
   service/api/         # 含 farm.ts 等接口
   store/modules/       # farm-account 等
+  layouts/             # 含桌面窗口控件、侧栏布局
   locales/             # 中英 i18n
+  utils/desktop.ts     # Wails 桌面运行时辅助
 ```
 
-## 权限说明
+## 鉴权说明
 
-- 登录后拉取后端路由与按钮 alias
-- 页面按钮用 `useAuth().hasAuth('farm-xxx:yyy')` 控制
-- 新增后端 API 需在 qq-farm-core 权限种子 / 菜单中登记，否则会 403
+- 登录后使用 JWT；菜单为前端静态路由（非后端动态菜单）
+- 页面按钮可用 `useAuth()` 做展示控制
+- 后端侧为「登录即全权限」，无需 Casbin 资源登记
 
 ## License
 

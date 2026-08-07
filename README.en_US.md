@@ -4,7 +4,9 @@ Admin UI for the QQ Farm assistant: multi-account control, automation settings, 
 
 Built on [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin) (Vue 3 + Vite + TypeScript + Naive UI + UnoCSS). Farm features live under `src/views/farm`.
 
-Backend: [`../qq-farm-core`](../qq-farm-core).
+- Repo: [github.com/it00021hot/qq-farm-web](https://github.com/it00021hot/qq-farm-web)
+- Backend: [`../qq-farm-core`](../qq-farm-core) · [GitHub](https://github.com/it00021hot/qq-farm-core)
+- Desktop embed: use with [`../qq-farm-desktop`](../qq-farm-desktop) via `pnpm build:desktop`
 
 <span><a href="./README.md">中文</a> | English</span>
 
@@ -54,28 +56,33 @@ Start qq-farm-core first (`make run` or `go run ./cmd/app -e=dev -p=9528`).
 ```bash
 pnpm build
 pnpm build:test
+pnpm build:desktop   # Wails embed (.env.desktop)
 pnpm lint
 pnpm gen-route
 ```
 
 Dev proxy is controlled by `VITE_HTTP_PROXY=Y`. Update `.env.test` / `.env.prod` if the API port changes.
 
+Desktop mode (`.env.desktop`): `VITE_IS_DESKTOP=Y`, hash router, direct `http://127.0.0.1:9528`.
+
 ## Layout (farm-related)
 
 ```
 src/
   views/farm/          # farm feature pages
-  views/system/        # tenant / role / menu / permission
+  views/system/        # admin users
   service/api/         # includes farm.ts
   store/modules/       # e.g. farm-account
+  layouts/             # desktop window controls, sider layout
   locales/             # zh-CN / en-US
+  utils/desktop.ts     # Wails runtime helpers
 ```
 
-## Permissions
+## Auth
 
-- Routes and button aliases come from the backend after login
-- Use `useAuth().hasAuth('farm-xxx:yyy')` for UI gates
-- New APIs must be seeded in qq-farm-core RBAC resources or requests return 403
+- JWT after login; menus are static frontend routes (not backend-driven)
+- Optional UI gates via `useAuth()`
+- Backend grants full access after login (no Casbin resource seeding)
 
 ## License
 
