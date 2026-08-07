@@ -19,20 +19,37 @@ export interface UseFarmWsOptions {
 }
 
 function resolveWsUrl(path: string) {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
   const token = getToken();
-
   const query = new URLSearchParams();
   if (token) query.set('token', token);
+
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
   // Dev HTTP goes through Vite `/proxy-default`; WS must use the same prefix
   // so upgrade is forwarded to the Go backend (not served by Vite itself).
   const isDevProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
-  const wsPath = isDevProxy ? `/proxy-default${path.startsWith('/') ? path : `/${path}`}` : path;
+  if (isDevProxy) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const qs = query.toString();
+    return `${protocol}//${window.location.host}/proxy-default${normalizedPath}${qs ? `?${qs}` : ''}`;
+  }
 
+  // Desktop / production: prefer explicit API base (Wails WebView is not same-origin as Fiber).
+  const serviceBase = String(import.meta.env.VITE_SERVICE_BASE_URL || '').trim();
+  if (serviceBase) {
+    try {
+      const base = new URL(serviceBase, window.location.href);
+      const wsProtocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
+      const qs = query.toString();
+      return `${wsProtocol}//${base.host}${normalizedPath}${qs ? `?${qs}` : ''}`;
+    } catch {
+      // fall through to page host
+    }
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const qs = query.toString();
-  return `${protocol}//${host}${wsPath}${qs ? `?${qs}` : ''}`;
+  return `${protocol}//${window.location.host}${normalizedPath}${qs ? `?${qs}` : ''}`;
 }
 
 export function useFarmWs(options: UseFarmWsOptions = {}) {

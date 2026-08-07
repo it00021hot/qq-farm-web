@@ -3,11 +3,13 @@ import { useFullscreen } from '@vueuse/core';
 import { GLOBAL_HEADER_MENU_ID } from '@/constants/app';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
+import { isDesktopWindows } from '@/utils/desktop';
 import GlobalLogo from '../global-logo/index.vue';
 import GlobalBreadcrumb from '../global-breadcrumb/index.vue';
 import GlobalSearch from '../global-search/index.vue';
 import ThemeButton from './components/theme-button.vue';
 import UserAvatar from './components/user-avatar.vue';
+import WindowControls from './components/window-controls.vue';
 
 defineOptions({
   name: 'GlobalHeader'
@@ -27,17 +29,23 @@ defineProps<Props>();
 const appStore = useAppStore();
 const themeStore = useThemeStore();
 const { isFullscreen, toggle } = useFullscreen();
+const windowsDesktop = isDesktopWindows();
 </script>
 
 <template>
-  <DarkModeContainer class="h-full flex-y-center px-12px shadow-header">
+  <DarkModeContainer class="h-full flex-y-center px-12px shadow-header desktop-drag-region">
     <GlobalLogo v-if="showLogo" class="h-full" :style="{ width: themeStore.sider.width + 'px' }" />
-    <MenuToggler v-if="showMenuToggler" :collapsed="appStore.siderCollapse" @click="appStore.toggleSiderCollapse" />
+    <MenuToggler
+      v-if="showMenuToggler"
+      class="desktop-no-drag"
+      :collapsed="appStore.siderCollapse"
+      @click="appStore.toggleSiderCollapse"
+    />
     <div v-if="showMenu" :id="GLOBAL_HEADER_MENU_ID" class="h-full flex-y-center flex-1-hidden"></div>
     <div v-else class="h-full flex-y-center flex-1-hidden">
       <GlobalBreadcrumb v-if="!appStore.isMobile" class="ml-12px" />
     </div>
-    <div class="h-full flex-y-center justify-end">
+    <div class="h-full flex-y-center justify-end desktop-no-drag">
       <GlobalSearch v-if="themeStore.header.globalSearch.visible" />
       <FullScreen v-if="!appStore.isMobile" :full="isFullscreen" @click="toggle" />
       <LangSwitch
@@ -53,6 +61,7 @@ const { isFullscreen, toggle } = useFullscreen();
       />
       <ThemeButton />
       <UserAvatar />
+      <WindowControls v-if="windowsDesktop" />
     </div>
   </DarkModeContainer>
 </template>

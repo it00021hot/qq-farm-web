@@ -28,6 +28,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --mode prod",
+    "build:desktop": "vite build --mode desktop",
     "build:test": "vite build --mode test",
     "cleanup": "sa cleanup",
     "commit": "sa git-commit",

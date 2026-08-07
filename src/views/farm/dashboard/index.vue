@@ -603,9 +603,6 @@ onUnmounted(() => {
       <h2 class="text-18px font-medium">{{ $t('page.farm.dashboard.title') }}</h2>
       <NSpace>
         <NTag v-if="connected" size="small" type="success" :bordered="false">WS</NTag>
-        <NButton size="small" :loading="farmAccountStore.loading || detailLoading" @click="refresh">
-          {{ $t('page.farm.dashboard.refresh') }}
-        </NButton>
       </NSpace>
     </div>
 

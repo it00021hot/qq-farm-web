@@ -1,13 +1,31 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { NConfigProvider, darkTheme } from 'naive-ui';
 import type { WatermarkProps } from 'naive-ui';
+import {
+  ensureWailsRuntime,
+  installDesktopContextMenuGuard,
+  isDesktop,
+  isDesktopMac,
+  isDesktopWindows
+} from '@/utils/desktop';
 import { useAppStore } from './store/modules/app';
 import { useThemeStore } from './store/modules/theme';
 import { naiveDateLocales, naiveLocales } from './locales/naive';
 
 defineOptions({
   name: 'App'
+});
+
+if (isDesktop) {
+  void ensureWailsRuntime();
+  installDesktopContextMenuGuard();
+}
+
+onMounted(() => {
+  if (!isDesktop) return;
+  document.documentElement.classList.toggle('desktop-windows', isDesktopWindows());
+  document.documentElement.classList.toggle('desktop-mac', isDesktopMac());
 });
 
 const appStore = useAppStore();

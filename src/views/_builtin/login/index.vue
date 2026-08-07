@@ -5,7 +5,9 @@ import { getPaletteColorByNumber, mixColor } from '@sa/color';
 import { loginModuleRecord } from '@/constants/app';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
+import { isDesktopWindows } from '@/utils/desktop';
 import { $t } from '@/locales';
+import WindowControls from '@/layouts/modules/global-header/components/window-controls.vue';
 import PwdLogin from './modules/pwd-login.vue';
 import CodeLogin from './modules/code-login.vue';
 import Register from './modules/register.vue';
@@ -21,6 +23,7 @@ const props = defineProps<Props>();
 
 const appStore = useAppStore();
 const themeStore = useThemeStore();
+const windowsDesktop = isDesktopWindows();
 
 interface LoginModule {
   label: App.I18n.I18nKey;
@@ -52,6 +55,9 @@ const bgColor = computed(() => {
 
 <template>
   <div class="relative size-full flex-center overflow-hidden" :style="{ backgroundColor: bgColor }">
+    <div v-if="windowsDesktop" class="absolute right-0 top-0 z-10 h-36px flex items-stretch desktop-drag-region">
+      <WindowControls />
+    </div>
     <WaveBg :theme-color="bgThemeColor" />
     <NCard :bordered="false" class="relative z-4 w-auto rd-12px">
       <div class="w-400px lt-sm:w-300px">

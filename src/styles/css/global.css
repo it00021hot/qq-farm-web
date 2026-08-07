@@ -14,3 +14,19 @@ html {
   overflow-x: hidden;
   color: rgb(var(--base-text-color));
 }
+
+/* Wails frameless: drag / no-drag regions */
+.desktop-drag-region {
+  --wails-draggable: drag;
+}
+
+.desktop-no-drag {
+  --wails-draggable: no-drag;
+}
+
+/* Mac: empty top strip under traffic lights (logo lives at sider bottom). */
+html.desktop-mac .desktop-mac-traffic-spacer {
+  box-sizing: border-box;
+  /* Leave click-through room for system traffic lights on the left. */
+  padding-left: 76px;
+}
