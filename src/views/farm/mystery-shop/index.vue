@@ -1,19 +1,29 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { NButton, NCard, NEmpty, NSpin, NTag } from 'naive-ui';
+import { NButton, NCard, NEmpty, NSpin, NTag, useDialog, useMessage } from 'naive-ui';
 import dayjs from 'dayjs';
-import { fetchGetFarmMysteryShop } from '@/service/api';
+import { fetchGetFarmMysteryShop, fetchPurchaseFarmMysteryShop } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { resolveCatalogImage } from '@/views/farm/game-config/shared';
 
 defineOptions({ name: 'FarmMysteryShop' });
 
 const farmAccountStore = useFarmAccountStore();
+const dialog = useDialog();
+const message = useMessage();
 const loading = ref(false);
+const purchasing = ref(false);
 const shop = ref<Api.Farm.MysteryShop | null>(null);
 let requestSeq = 0;
 
 const accountId = computed(() => farmAccountStore.currentAccountId);
+
+const canPurchase = computed(() => {
+  const npc = shop.value?.npc;
+  if (!npc || npc.stock <= 0) return false;
+  if (npc.price.balance == null) return true;
+  return npc.price.balance >= npc.price.count;
+});
 
 async function loadShop() {
   if (!accountId.value) {
@@ -34,6 +44,32 @@ async function loadShop() {
 function formatTime(ms?: number) {
   if (!ms) return '-';
   return dayjs(ms).format('YYYY-MM-DD HH:mm:ss');
+}
+
+function purchase() {
+  const npc = shop.value?.npc;
+  if (!accountId.value || !npc || !canPurchase.value || purchasing.value) return;
+  dialog.warning({
+    title: '确认购买',
+    content: `确认花费 ${npc.price.count} ${npc.price.name || '货币'} 购买 ${npc.reward.name} x${npc.reward.count}？`,
+    positiveText: '购买',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      purchasing.value = true;
+      try {
+        const { data, error } = await fetchPurchaseFarmMysteryShop({
+          accountId: accountId.value!,
+          npcId: npc.id
+        });
+        if (error) return;
+        if (data?.shop) shop.value = data.shop;
+        else await loadShop();
+        message.success('购买成功');
+      } finally {
+        purchasing.value = false;
+      }
+    }
+  });
 }
 
 watch(
@@ -77,11 +113,12 @@ watch(
             </span>
           </div>
           <div v-if="shop.npc.discountPercent > 0" class="text-12px text-error">
-            {{ shop.npc.discountPercent }}% 折扣 · 原价 {{ shop.npc.originalPrice }}
+            {{ shop.npc.discountPercent }}% 折扣 · 原价
+            <span class="line-through">{{ shop.npc.originalPrice }}</span>
           </div>
           <div class="text-12px text-#888">活动开始：{{ formatTime(shop.activeTime) }}</div>
           <div class="text-12px text-#888">活动结束：{{ formatTime(shop.expireTime) }}</div>
-          <div class="text-12px text-warning">购买协议尚未接入，当前仅支持查询</div>
+          <NButton type="primary" :disabled="!canPurchase" :loading="purchasing" @click="purchase">购买</NButton>
         </div>
       </NSpin>
     </NCard>

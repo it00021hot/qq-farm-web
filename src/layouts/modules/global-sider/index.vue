@@ -21,7 +21,7 @@ const darkMenu = computed(
     !themeStore.darkMode && !isTopHybridSidebarFirst.value && !isTopHybridHeaderFirst.value && themeStore.sider.inverted
 );
 const showLogo = computed(() => themeStore.layout.mode === 'vertical');
-const macDesktop = isDesktopMac();
+const macDesktop = computed(() => isDesktopMac());
 </script>
 
 <template>

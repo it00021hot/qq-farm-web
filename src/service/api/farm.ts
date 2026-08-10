@@ -354,6 +354,14 @@ export function fetchGetFarmMysteryShop(accountId: number) {
   });
 }
 
+export function fetchPurchaseFarmMysteryShop(data: { accountId: number; npcId: number }) {
+  return request<Api.Farm.MysteryPurchaseResult>({
+    url: '/farm/mystery-shop/purchase',
+    method: 'post',
+    data
+  });
+}
+
 export function fetchGetFarmDiamond(accountId: number) {
   return request<Api.Farm.DiamondBalance>({
     url: '/farm/diamond',

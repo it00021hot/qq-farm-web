@@ -23,7 +23,7 @@ const props = defineProps<Props>();
 
 const appStore = useAppStore();
 const themeStore = useThemeStore();
-const windowsDesktop = isDesktopWindows();
+const windowsDesktop = computed(() => isDesktopWindows());
 
 interface LoginModule {
   label: App.I18n.I18nKey;

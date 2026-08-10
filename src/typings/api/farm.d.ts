@@ -730,8 +730,21 @@ declare namespace Api {
         stock: number;
         price: MallPrice;
         originalPrice: number;
+        unitPrice: number;
+        unitOriginalPrice: number;
         discountPercent: number;
       } | null;
+    };
+
+    type MysteryPurchaseResult = {
+      purchase: {
+        npcId: number;
+        reward: CommerceItem;
+        price: MallPrice;
+        originalPrice: number;
+        discountPercent: number;
+      };
+      shop: MysteryShop;
     };
 
     type DiamondBalance = {
