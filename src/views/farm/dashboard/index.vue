@@ -4,7 +4,6 @@ import dayjs from 'dayjs';
 import { NAvatar, NButton, NCard, NEmpty, NGi, NGrid, NInput, NProgress, NSelect, NSpace, NSpin, NTag } from 'naive-ui';
 import {
   fetchClearFarmLogs,
-  fetchGetFarmActivitySnapshot,
   fetchGetFarmBag,
   fetchGetFarmDiamond,
   fetchGetFarmLogs,
@@ -58,12 +57,6 @@ const detailLoading = ref(false);
 const bagLoading = ref(false);
 const bagItems = ref<Api.Farm.BagItem[]>([]);
 const diamond = ref<number | null>(null);
-const travelPass = ref<{
-  title?: string;
-  level?: number;
-  progress?: number;
-  progressMax?: number;
-} | null>(null);
 const couponBaseline = ref<number | null>(null);
 const logs = ref<FarmLogRow[]>([]);
 const logContainer = ref<HTMLElement | null>(null);
@@ -145,13 +138,6 @@ const goldBean = computed(() => Number(bagItemById(1005)?.count || 0));
 const sessionCouponGained = computed(() => {
   if (couponBaseline.value == null) return 0;
   return coupon.value - couponBaseline.value;
-});
-
-const travelPassPercent = computed(() => {
-  const progress = Number(travelPass.value?.progress ?? 0);
-  const progressMax = Number(travelPass.value?.progressMax ?? 0);
-  if (!progressMax) return 0;
-  return Math.min(100, Math.max(0, (progress / progressMax) * 100));
 });
 
 const filteredOperations = computed(() => {
@@ -434,30 +420,6 @@ async function loadBag() {
   }
 }
 
-async function loadTravelPass() {
-  if (!farmAccountStore.currentAccountId || !isOnline.value) {
-    travelPass.value = null;
-    return;
-  }
-  const { data, error } = await fetchGetFarmActivitySnapshot(farmAccountStore.currentAccountId);
-  if (error || !data) {
-    travelPass.value = null;
-    return;
-  }
-  const season = (data.season || {}) as Record<string, unknown>;
-  const pass = (season.pass || {}) as Record<string, unknown>;
-  if (!pass || Object.keys(pass).length === 0) {
-    travelPass.value = null;
-    return;
-  }
-  travelPass.value = {
-    title: String(pass.title || pass.name || '千星游记'),
-    level: Number(pass.level || 0),
-    progress: Number(pass.progress || 0),
-    progressMax: Number(pass.progressMax || 0)
-  };
-}
-
 function applyStatus(next: Api.Farm.Status) {
   status.value = next;
   syncNextChecks(next.nextChecks);
@@ -470,7 +432,6 @@ async function loadStatus(opts?: { silent?: boolean; withExtras?: boolean }) {
     syncNextChecks(undefined);
     localUptime.value = 0;
     bagItems.value = [];
-    travelPass.value = null;
     couponBaseline.value = null;
     return;
   }
@@ -483,10 +444,9 @@ async function loadStatus(opts?: { silent?: boolean; withExtras?: boolean }) {
       applyStatus(data);
       if (withExtras) {
         if (data.online && data.runStatus === 1) {
-          await Promise.all([loadBag(), loadTravelPass()]);
+          await loadBag();
         } else {
           bagItems.value = [];
-          travelPass.value = null;
           couponBaseline.value = null;
         }
       }
@@ -570,10 +530,8 @@ watch(
 watch(isOnline, online => {
   if (online) {
     void loadBag();
-    void loadTravelPass();
   } else {
     bagItems.value = [];
-    travelPass.value = null;
     couponBaseline.value = null;
   }
 });
@@ -586,7 +544,6 @@ onMounted(async () => {
   bagTimer = setInterval(() => {
     if (isOnline.value) {
       void loadBag();
-      void loadTravelPass();
     }
   }, 30000);
 });
@@ -641,10 +598,10 @@ onUnmounted(() => {
 
         <NGi>
           <NCard :bordered="false" size="small" class="card-wrapper h-full">
-            <div class="grid grid-cols-4 gap-8px">
-              <div>
+            <div class="grid grid-cols-2 gap-x-12px gap-y-12px">
+              <div class="min-w-0">
                 <div class="text-12px text-gray-500">{{ $t('page.farm.dashboard.gold') }}</div>
-                <div class="text-20px text-warning font-semibold">{{ status?.gold ?? 0 }}</div>
+                <div class="break-all text-18px text-warning font-semibold tabular-nums">{{ status?.gold ?? 0 }}</div>
                 <div
                   v-if="status?.sessionGoldGained"
                   class="text-11px"
@@ -653,9 +610,11 @@ onUnmounted(() => {
                   {{ (status.sessionGoldGained || 0) > 0 ? '+' : '' }}{{ status.sessionGoldGained }}
                 </div>
               </div>
-              <div class="text-center">
+              <div class="min-w-0">
                 <div class="text-12px text-gray-500">{{ $t('page.farm.dashboard.coupon') }}</div>
-                <div class="text-20px text-success font-semibold">{{ isOnline ? coupon : 0 }}</div>
+                <div class="break-all text-18px text-success font-semibold tabular-nums">
+                  {{ isOnline ? coupon : 0 }}
+                </div>
                 <div
                   v-if="sessionCouponGained"
                   class="text-11px"
@@ -664,24 +623,17 @@ onUnmounted(() => {
                   {{ sessionCouponGained > 0 ? '+' : '' }}{{ sessionCouponGained }}
                 </div>
               </div>
-              <div class="text-center">
+              <div class="min-w-0">
                 <div class="text-12px text-gray-500">钻石</div>
-                <div class="text-20px text-info font-semibold">{{ isOnline ? (diamond ?? '-') : '-' }}</div>
+                <div class="break-all text-18px text-info font-semibold tabular-nums">
+                  {{ isOnline ? (diamond ?? '-') : '-' }}
+                </div>
               </div>
-              <div class="text-right">
+              <div class="min-w-0">
                 <div class="text-12px text-gray-500">{{ $t('page.farm.dashboard.goldBean') }}</div>
-                <div class="text-20px text-warning font-semibold">{{ isOnline ? goldBean : 0 }}</div>
-              </div>
-            </div>
-
-            <div v-if="travelPass" class="mt-12px">
-              <div class="mb-4px flex-y-center justify-between text-12px text-gray-500">
-                <span class="truncate">★ {{ travelPass.title || $t('page.farm.dashboard.travelPass') }}</span>
-                <span>Lv.{{ travelPass.level || 0 }}</span>
-              </div>
-              <NProgress type="line" :percentage="travelPassPercent" :show-indicator="false" status="warning" />
-              <div class="mt-4px text-right text-11px text-gray-400">
-                {{ travelPass.progress ?? 0 }} / {{ travelPass.progressMax ?? '?' }}
+                <div class="break-all text-18px text-warning font-semibold tabular-nums">
+                  {{ isOnline ? goldBean : 0 }}
+                </div>
               </div>
             </div>
 
