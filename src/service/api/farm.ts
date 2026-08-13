@@ -208,6 +208,22 @@ export function fetchClaimFarmActivitySolarTerm(data: Api.Farm.ActivityClaimPara
   return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/solar-terms/claim', method: 'post', data });
 }
 
+export function fetchClaimFarmActivityGreenPlum(data: Api.Farm.ActivityClaimParams) {
+  return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/green-plum/claim', method: 'post', data });
+}
+
+export function fetchStartFarmActivityGreenPlumBrew(data: Api.Farm.ActivityClaimParams) {
+  return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/green-plum/brew/start', method: 'post', data });
+}
+
+export function fetchContinueFarmActivityGreenPlumBrew(data: Api.Farm.ActivityClaimParams) {
+  return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/green-plum/brew/continue', method: 'post', data });
+}
+
+export function fetchSettleFarmActivityGreenPlumBrew(data: Api.Farm.ActivityClaimParams) {
+  return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/green-plum/brew/settle', method: 'post', data });
+}
+
 export function fetchClaimFarmActivityTask(data: Api.Farm.ActivityClaimParams) {
   return request({ url: '/farm/activity/task/claim', method: 'post', data });
 }

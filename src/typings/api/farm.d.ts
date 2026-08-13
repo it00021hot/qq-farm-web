@@ -320,6 +320,9 @@ declare namespace Api {
       image?: string;
       category?: string;
       itemType?: number;
+      sellable?: boolean;
+      sellStatus?: string;
+      sellCondition?: string;
       priceId?: number;
       price?: number;
       priceUnit?: string;
@@ -447,6 +450,7 @@ declare namespace Api {
       constellation: Record<string, unknown>;
       shop: Record<string, unknown>;
       solarTerms: Record<string, unknown>;
+      greenPlum?: Record<string, unknown>;
       capabilities?: Record<string, boolean>;
       actions?: Record<string, ActivityAction>;
       errors?: Record<string, string>;
@@ -467,6 +471,9 @@ declare namespace Api {
       termId?: string;
       itemId?: string;
       count?: number;
+      activityId?: string;
+      operateType?: number;
+      ingredients?: Array<{ uid: number | string; count: number }>;
     };
 
     /** analytics / daily stats */

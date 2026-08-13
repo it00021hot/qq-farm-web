@@ -83,7 +83,7 @@ function categoryLabel(cat: CategoryValue) {
 
 function canSell(item: Api.Farm.BagItem) {
   const t = Number(item.itemType || 0);
-  return t === 17 || t === 6;
+  return (t === 17 || t === 6) && item.sellable === true;
 }
 
 function canUse(item: Api.Farm.BagItem) {
@@ -320,6 +320,13 @@ defineExpose({ refresh: loadBag });
           <div class="mt-4px flex-center flex-wrap gap-6px text-12px">
             <span v-if="item.level" class="opacity-55">Lv.{{ item.level }}</span>
             <span v-if="item.price" :class="priceClass(item)">{{ item.price }}{{ item.priceUnit || '' }}</span>
+            <span
+              v-if="getItemCategory(item) === 'fruit'"
+              :class="canSell(item) ? 'text-green-500' : 'text-gray-400'"
+              :title="item.sellCondition || ''"
+            >
+              {{ canSell(item) ? '可出售' : item.sellStatus === 'conditional' ? '条件出售' : '不可出售' }}
+            </span>
           </div>
           <div class="mt-4px text-center text-14px font-medium">
             {{ item.hoursText || `x${item.count}` }}

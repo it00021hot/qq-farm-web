@@ -2,11 +2,15 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { NButton, NCard, NEmpty, NInputNumber, NModal, NProgress, NSpace, NSpin, NTag, useMessage } from 'naive-ui';
 import {
+  fetchClaimFarmActivityGreenPlum,
   fetchClaimFarmActivityPass,
   fetchClaimFarmActivitySolarTerm,
+  fetchContinueFarmActivityGreenPlumBrew,
   fetchExchangeFarmActivityShop,
   fetchGetFarmActivitySnapshot,
-  fetchLightFarmActivityConstellation
+  fetchLightFarmActivityConstellation,
+  fetchSettleFarmActivityGreenPlumBrew,
+  fetchStartFarmActivityGreenPlumBrew
 } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
@@ -17,7 +21,7 @@ defineOptions({
   name: 'FarmActivity'
 });
 
-type ActivityTab = 'travel' | 'constellation' | 'shop' | 'solar';
+type ActivityTab = 'travel' | 'constellation' | 'shop' | 'solar' | 'greenPlum';
 type RewardItem = {
   id?: string | number;
   name?: string;
@@ -77,6 +81,50 @@ type ConstellationGroup = {
   claimStatus?: string;
   rewards?: RewardItem[];
 };
+type GreenPlumIngredient = {
+  uid?: string;
+  key?: string;
+  id?: string | number;
+  name?: string;
+  count?: number | string;
+  image?: string;
+  mutantTypes?: string[];
+};
+type GreenPlum = {
+  activityId?: string;
+  dailyActivityId?: string;
+  brewActivityId?: string;
+  known?: boolean;
+  active?: boolean;
+  name?: string;
+  typeCode?: number;
+  startTime?: number;
+  endTime?: number;
+  balance?: string;
+  balanceKnown?: boolean;
+  ingredients?: GreenPlumIngredient[];
+  currentRound?: number;
+  maxRounds?: number;
+  started?: boolean;
+  finished?: boolean;
+  baseGold?: string;
+  basePrice?: string;
+  guaranteedPrice?: string;
+  quotePrices?: string[];
+  quoteTotals?: string[];
+  quote?: { round?: number; unitPrice?: string; totalGold?: string; doubled?: boolean } | null;
+  dailySeed?: {
+    claimed?: boolean;
+    grantId?: string;
+    reward?: RewardItem;
+  };
+  actions?: {
+    claimSeed?: { enabled?: boolean; available?: boolean };
+    start?: { enabled?: boolean; available?: boolean };
+    continue?: { enabled?: boolean; available?: boolean };
+    settle?: { enabled?: boolean; available?: boolean };
+  };
+};
 
 const farmAccountStore = useFarmAccountStore();
 const { hasAuth } = useAuth();
@@ -89,6 +137,7 @@ const season = ref<Record<string, unknown>>({});
 const constellation = ref<Record<string, unknown>>({});
 const shop = ref<Record<string, unknown>>({});
 const solarTerms = ref<Record<string, unknown>>({});
+const greenPlum = ref<GreenPlum>({});
 const capabilities = ref<Record<string, boolean>>({});
 const actions = ref<Record<string, Api.Farm.ActivityAction>>({});
 const clockNow = ref(Date.now());
@@ -105,7 +154,8 @@ const tabs: Array<{ key: ActivityTab; labelKey: App.I18n.I18nKey }> = [
   { key: 'travel', labelKey: 'page.farm.activity.tabTravel' },
   { key: 'constellation', labelKey: 'page.farm.activity.tabConstellation' },
   { key: 'shop', labelKey: 'page.farm.activity.tabShop' },
-  { key: 'solar', labelKey: 'page.farm.activity.tabSolar' }
+  { key: 'solar', labelKey: 'page.farm.activity.tabSolar' },
+  { key: 'greenPlum', labelKey: 'page.farm.activity.tabGreenPlum' }
 ];
 
 const pass = computed(() => (season.value.pass as Record<string, unknown> | undefined) || {});
@@ -170,6 +220,44 @@ const visibleShopGoods = computed(() => {
 const solarTermList = computed(() => (solarTerms.value.terms as SolarTerm[]) || []);
 const selectedSolar = computed(() => solarTermList.value.find(term => term.id === selectedSolarId.value) || null);
 
+const greenPlumActive = computed(() => greenPlum.value.known === true && greenPlum.value.active === true);
+const greenPlumEnd = computed(() => Number(greenPlum.value.endTime || 0) || undefined);
+const greenPlumBalance = computed(() => {
+  if (greenPlum.value.balanceKnown === false) return '--';
+  return greenPlum.value.balance ?? '0';
+});
+const greenPlumStarted = computed(() => greenPlum.value.started === true);
+const greenPlumFinished = computed(() => greenPlum.value.finished === true);
+const greenPlumRound = computed(() => Number(greenPlum.value.currentRound || 0));
+const greenPlumMaxRounds = computed(() => Math.max(1, Number(greenPlum.value.maxRounds || 3)));
+const greenPlumQuotes = computed(() => {
+  const prices = greenPlum.value.quotePrices || [];
+  const totals = greenPlum.value.quoteTotals || [];
+  return totals.map((total, index) => ({
+    index: index + 1,
+    unitPrice: prices[index] || '0',
+    total
+  }));
+});
+const greenPlumSeedClaimed = computed(() => greenPlum.value.dailySeed?.claimed === true);
+const greenPlumIngredients = computed(() => greenPlum.value.ingredients || []);
+const greenPlumSelectedUids = ref<Set<string>>(new Set());
+const greenPlumIngredientCounts = ref<Record<string, number>>({});
+const greenPlumAllSelected = computed(
+  () => greenPlumIngredients.value.length > 0 && greenPlumSelectedUids.value.size === greenPlumIngredients.value.length
+);
+const greenPlumSelectedIngredients = computed(() =>
+  greenPlumIngredients.value
+    .filter(item => greenPlumSelectedUids.value.has(String(item.uid)))
+    .map(item => ({ uid: String(item.uid), count: greenPlumIngredientCounts.value[String(item.uid)] || 1 }))
+);
+const greenPlumSelectedTotal = computed(() =>
+  greenPlumSelectedIngredients.value.reduce((sum, item) => sum + (item.count || 0), 0)
+);
+const greenPlumBusy = computed(() =>
+  ['greenPlum', 'greenPlumStart', 'greenPlumContinue', 'greenPlumSettle'].includes(pendingKey.value || '')
+);
+
 const pageTitle = computed(() => {
   if (activeTab.value === 'shop') {
     return String(shop.value.title || shop.value.name || $t('page.farm.activity.tabShop'));
@@ -187,6 +275,9 @@ const pageTitle = computed(() => {
         $t('page.farm.activity.tabSolar')
     );
   }
+  if (activeTab.value === 'greenPlum') {
+    return String(greenPlum.value.name || $t('page.farm.activity.tabGreenPlum'));
+  }
   return String(season.value.title || $t('page.farm.activity.tabTravel'));
 });
 
@@ -197,6 +288,8 @@ const remainingText = computed(() => {
     endTime = Number(constellation.value.endTime || season.value.endTime || 0) || undefined;
   } else if (activeTab.value === 'solar') {
     endTime = Number(selectedSolar.value?.endTime || season.value.endTime || 0) || undefined;
+  } else if (activeTab.value === 'greenPlum') {
+    endTime = greenPlumEnd.value;
   } else endTime = Number(season.value.endTime || 0) || undefined;
   if (!endTime) return '';
   // Support both ms and sec timestamps.
@@ -217,7 +310,8 @@ const tabBadges = computed(() => ({
     ['lightable', 'claimableUnknown'].includes(String(g.visualState || ''))
   ),
   shop: shopGoods.value.some(g => g.exchangeable),
-  solar: solarTermList.value.some(t => t.claimable || t.canClaim)
+  solar: solarTermList.value.some(t => t.claimable || t.canClaim),
+  greenPlum: greenPlumActive.value && actionEnabled('claimGreenPlum')
 }));
 
 function actionEnabled(key: string): boolean {
@@ -315,6 +409,7 @@ function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   constellation.value = (snap.constellation as Record<string, unknown>) || {};
   shop.value = (snap.shop as Record<string, unknown>) || {};
   solarTerms.value = (snap.solarTerms as Record<string, unknown>) || {};
+  greenPlum.value = (snap.greenPlum as GreenPlum) || {};
   capabilities.value = snap.capabilities || data.capabilities || {};
   actions.value = snap.actions || data.actions || {};
 
@@ -333,6 +428,7 @@ async function loadActivities() {
     constellation.value = {};
     shop.value = {};
     solarTerms.value = {};
+    greenPlum.value = {};
     return;
   }
   loading.value = true;
@@ -454,11 +550,136 @@ async function claimSolar() {
   }
 }
 
+async function claimGreenPlum() {
+  if (!farmAccountStore.currentAccountId || !greenPlumActive.value) return;
+  if (greenPlumSeedClaimed.value) return;
+  pendingKey.value = 'greenPlum';
+  try {
+    const { error, data } = await fetchClaimFarmActivityGreenPlum({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
+    else await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function startGreenPlumBrew() {
+  if (!farmAccountStore.currentAccountId || !greenPlumActive.value) return;
+  const ingredients = greenPlumSelectedIngredients.value;
+  if (ingredients.length === 0) return;
+  pendingKey.value = 'greenPlumStart';
+  try {
+    const { error, data } = await fetchStartFarmActivityGreenPlumBrew({
+      accountId: farmAccountStore.currentAccountId,
+      ingredients
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
+    else await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function continueGreenPlumBrew() {
+  if (!farmAccountStore.currentAccountId || !greenPlumActive.value) return;
+  pendingKey.value = 'greenPlumContinue';
+  try {
+    const { error, data } = await fetchContinueFarmActivityGreenPlumBrew({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    const payload = data as Record<string, unknown> | null | undefined;
+    if (payload?.message && typeof payload.message === 'string') {
+      message.success(String(payload.message));
+    }
+    if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
+    else await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function settleGreenPlumBrew() {
+  if (!farmAccountStore.currentAccountId || !greenPlumActive.value) return;
+  pendingKey.value = 'greenPlumSettle';
+  try {
+    const { error, data } = await fetchSettleFarmActivityGreenPlumBrew({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    if (data) applySnapshot(data as Api.Farm.ActivitySnapshot);
+    else await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+function toggleGreenPlumIngredient(uid: string) {
+  const next = new Set(greenPlumSelectedUids.value);
+  if (next.has(uid)) next.delete(uid);
+  else next.add(uid);
+  greenPlumSelectedUids.value = next;
+}
+
+function toggleGreenPlumAll() {
+  greenPlumSelectedUids.value = greenPlumAllSelected.value
+    ? new Set()
+    : new Set(greenPlumIngredients.value.map(item => String(item.uid)));
+}
+
+function setGreenPlumIngredientCount(uid: string, value: unknown) {
+  const item = greenPlumIngredients.value.find(entry => String(entry.uid) === uid);
+  const maximum = Math.max(1, Number(item?.count || 1));
+  greenPlumIngredientCounts.value = {
+    ...greenPlumIngredientCounts.value,
+    [uid]: Math.max(1, Math.min(Math.trunc(Number(value) || 1), maximum))
+  };
+}
+
+function greenPlumIngredientCount(uid: string) {
+  return greenPlumIngredientCounts.value[uid] || 1;
+}
+
 watch(
   () => farmAccountStore.currentAccountId,
   () => {
     void loadActivities();
   }
+);
+
+watch(
+  greenPlumIngredients,
+  items => {
+    const availableUids = new Set(items.map(item => String(item.uid)));
+    greenPlumSelectedUids.value = new Set([...greenPlumSelectedUids.value].filter(uid => availableUids.has(uid)));
+    const nextCounts: Record<string, number> = {};
+    for (const item of items) {
+      const uid = String(item.uid);
+      const max = Math.max(1, Number(item.count || 1));
+      nextCounts[uid] = Math.max(1, Math.min(greenPlumIngredientCounts.value[uid] || max, max));
+    }
+    greenPlumIngredientCounts.value = nextCounts;
+  },
+  { immediate: true }
 );
 
 onMounted(async () => {
@@ -802,6 +1023,269 @@ onUnmounted(() => {
                 {{ solarButtonLabel(selectedSolar) }}
               </NButton>
             </div>
+          </div>
+        </NCard>
+        <!-- 青梅 -->
+        <NCard v-show="activeTab === 'greenPlum'" :bordered="false" size="small" class="card-wrapper">
+          <div class="mb-12px rounded-8px bg-emerald-50 px-14px py-12px dark:bg-emerald-900/20">
+            <div class="text-16px font-medium">
+              {{ greenPlum.name || $t('page.farm.activity.greenPlumBrew') }}
+            </div>
+            <div class="mt-4px text-12px text-gray-500">{{ $t('page.farm.activity.greenPlumHint') }}</div>
+          </div>
+
+          <div class="mb-16px flex flex-wrap items-center gap-12px">
+            <NTag
+              size="small"
+              :type="greenPlumActive ? 'success' : greenPlum.known ? 'warning' : 'default'"
+              :bordered="false"
+            >
+              {{
+                greenPlumActive
+                  ? greenPlumFinished
+                    ? $t('page.farm.activity.greenPlumSettled')
+                    : greenPlumSeedClaimed
+                      ? $t('page.farm.activity.greenPlumSeedClaimed')
+                      : $t('page.farm.activity.claimable')
+                  : greenPlum.known
+                    ? $t('page.farm.activity.claimUnavailable')
+                    : $t('page.farm.activity.greenPlumUnknown')
+              }}
+            </NTag>
+            <span v-if="greenPlum.typeCode" class="text-12px text-gray-500">
+              {{ $t('page.farm.activity.activityId') }}: {{ greenPlum.activityId }} · type: {{ greenPlum.typeCode }}
+            </span>
+          </div>
+
+          <div
+            class="mb-16px flex flex-wrap items-center gap-10px rounded-8px border border-gray-200 px-12px py-10px dark:border-gray-700"
+          >
+            <span class="h-44px w-44px flex-center rounded-8px bg-emerald-100 text-24px dark:bg-emerald-900/40">
+              🫒
+            </span>
+            <div class="flex-1">
+              <div class="text-13px font-medium">
+                {{ $t('page.farm.activity.greenPlumBalance') }}:
+                <strong>{{ greenPlumBalance }}</strong>
+              </div>
+              <div class="mt-2px text-12px text-gray-500">{{ $t('page.farm.activity.greenPlumHint') }}</div>
+            </div>
+            <NButton
+              v-if="hasAuth(['farm-activity:green-plum'])"
+              type="primary"
+              size="small"
+              :loading="pendingKey === 'greenPlum'"
+              :disabled="!greenPlumActive || greenPlumSeedClaimed"
+              @click="claimGreenPlum"
+            >
+              {{
+                pendingKey === 'greenPlum'
+                  ? $t('page.farm.activity.claiming')
+                  : greenPlumSeedClaimed
+                    ? $t('page.farm.activity.greenPlumSeedClaimed')
+                    : $t('page.farm.activity.greenPlumClaimSeed')
+              }}
+            </NButton>
+          </div>
+
+          <div class="rounded-8px border border-gray-200 p-16px dark:border-gray-700">
+            <div class="mb-12px flex flex-wrap items-center justify-between gap-8px">
+              <div>
+                <div class="mb-4px text-13px text-gray-500">{{ $t('page.farm.activity.greenPlumBrewStatus') }}</div>
+                <div class="text-15px font-medium">
+                  {{
+                    greenPlumStarted
+                      ? $t('page.farm.activity.greenPlumRound', {
+                          round: greenPlumRound,
+                          max: greenPlumMaxRounds
+                        })
+                      : $t('page.farm.activity.greenPlumNotStarted')
+                  }}
+                </div>
+              </div>
+              <span class="text-12px text-gray-500">
+                {{
+                  $t('page.farm.activity.greenPlumBasePrice', {
+                    price: greenPlum.guaranteedPrice || greenPlum.basePrice || '0'
+                  })
+                }}
+              </span>
+            </div>
+
+            <template v-if="!greenPlumStarted">
+              <div class="mb-8px flex items-center justify-between gap-8px">
+                <span class="text-12px text-gray-500">{{ $t('page.farm.activity.greenPlumSelectIngredient') }}</span>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  :disabled="greenPlumBusy || greenPlumIngredients.length === 0"
+                  @click="toggleGreenPlumAll"
+                >
+                  {{
+                    greenPlumAllSelected
+                      ? $t('page.farm.activity.greenPlumDeselectAll')
+                      : $t('page.farm.activity.greenPlumSelectAll')
+                  }}
+                </NButton>
+              </div>
+
+              <NEmpty
+                v-if="!greenPlumIngredients.length"
+                class="py-16px"
+                :description="$t('page.farm.activity.greenPlumNoIngredient')"
+              />
+              <div v-else class="mb-12px flex flex-col gap-8px">
+                <div
+                  v-for="item in greenPlumIngredients"
+                  :key="String(item.uid)"
+                  class="rounded-8px border border-gray-200 px-12px py-10px dark:border-gray-700"
+                  :class="{ 'border-emerald-500': greenPlumSelectedUids.has(String(item.uid)) }"
+                >
+                  <div
+                    class="flex cursor-pointer items-center gap-10px"
+                    @click="toggleGreenPlumIngredient(String(item.uid))"
+                  >
+                    <img
+                      v-if="resolveCatalogImage(item.image)"
+                      :src="resolveCatalogImage(item.image)"
+                      class="h-36px w-36px object-contain"
+                      loading="lazy"
+                    />
+                    <div class="flex-1">
+                      <div class="text-13px font-medium">
+                        {{ item.name || $t('page.farm.activity.greenPlumIngredientName') }}
+                        <span v-if="item.mutantTypes?.length" class="text-11px text-gray-500">
+                          · 变异 {{ item.mutantTypes.join('+') }}
+                        </span>
+                      </div>
+                      <div class="mt-2px text-12px text-gray-500">
+                        {{ $t('page.farm.activity.greenPlumUid') }} {{ item.uid }} ·
+                        {{ $t('page.farm.activity.greenPlumOwned', { count: item.count }) }}
+                      </div>
+                    </div>
+                    <div
+                      class="flex h-22px w-22px items-center justify-center rounded-4px border border-gray-300"
+                      :class="{
+                        'border-emerald-500 bg-emerald-500 text-white': greenPlumSelectedUids.has(String(item.uid))
+                      }"
+                    >
+                      <span v-if="greenPlumSelectedUids.has(String(item.uid))">✓</span>
+                    </div>
+                  </div>
+
+                  <div v-if="greenPlumSelectedUids.has(String(item.uid))" class="mt-8px flex items-center gap-8px">
+                    <span class="text-12px text-gray-500">{{ $t('page.farm.activity.greenPlumInputCount') }}</span>
+                    <NInputNumber
+                      :value="greenPlumIngredientCount(String(item.uid))"
+                      class="w-110px"
+                      :min="1"
+                      :max="Number(item.count || 1)"
+                      :disabled="greenPlumBusy"
+                      @update:value="setGreenPlumIngredientCount(String(item.uid), $event)"
+                    />
+                    <NButton
+                      size="tiny"
+                      :disabled="greenPlumBusy || greenPlumIngredientCount(String(item.uid)) >= Number(item.count || 1)"
+                      @click="setGreenPlumIngredientCount(String(item.uid), item.count)"
+                    >
+                      {{ $t('page.farm.activity.greenPlumAll') }}
+                    </NButton>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-12px flex flex-wrap items-center justify-between gap-8px text-12px text-gray-500">
+                <span>
+                  {{
+                    $t('page.farm.activity.greenPlumSelectedSummary', {
+                      groups: greenPlumSelectedIngredients.length,
+                      total: greenPlumSelectedTotal
+                    })
+                  }}
+                </span>
+              </div>
+
+              <div class="flex justify-center">
+                <NButton
+                  v-if="hasAuth(['farm-activity:green-plum'])"
+                  type="primary"
+                  :loading="pendingKey === 'greenPlumStart'"
+                  :disabled="!greenPlumActive || greenPlumSelectedIngredients.length === 0"
+                  @click="startGreenPlumBrew"
+                >
+                  {{
+                    pendingKey === 'greenPlumStart'
+                      ? $t('page.farm.activity.greenPlumBrewing')
+                      : $t('page.farm.activity.greenPlumStartBrew')
+                  }}
+                </NButton>
+              </div>
+            </template>
+
+            <template v-else>
+              <div class="mb-12px grid gap-8px sm:grid-cols-2 lg:grid-cols-3">
+                <div
+                  v-for="quote in greenPlumQuotes"
+                  :key="quote.index"
+                  class="rounded-8px bg-emerald-50 px-10px py-8px text-center dark:bg-emerald-900/20"
+                >
+                  <div class="text-12px text-gray-500">
+                    {{ $t('page.farm.activity.greenPlumQuoteRound', { round: quote.index }) }}
+                  </div>
+                  <div class="mt-2px text-15px font-semibold text-emerald-700 dark:text-emerald-300">
+                    {{ Number(quote.total).toLocaleString() }}
+                  </div>
+                  <div class="mt-2px text-11px text-gray-500">
+                    {{ $t('page.farm.activity.greenPlumQuoteUnitPrice', { price: quote.unitPrice }) }}
+                  </div>
+                </div>
+                <div
+                  v-for="index in Math.max(0, greenPlumMaxRounds - greenPlumQuotes.length)"
+                  :key="`pending-${index}`"
+                  class="rounded-8px bg-gray-50 px-10px py-8px text-center dark:bg-gray-800"
+                >
+                  <div class="text-12px text-gray-500">
+                    {{
+                      $t('page.farm.activity.greenPlumQuoteRound', {
+                        round: greenPlumQuotes.length + index
+                      })
+                    }}
+                  </div>
+                  <div class="mt-2px text-15px font-semibold text-gray-400">
+                    {{ $t('page.farm.activity.greenPlumQuotePending') }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap justify-center gap-8px">
+                <NButton
+                  v-if="hasAuth(['farm-activity:green-plum'])"
+                  type="primary"
+                  :loading="pendingKey === 'greenPlumContinue'"
+                  :disabled="!greenPlumActive || greenPlumFinished || greenPlumRound >= greenPlumMaxRounds"
+                  @click="continueGreenPlumBrew"
+                >
+                  {{
+                    pendingKey === 'greenPlumContinue'
+                      ? $t('page.farm.activity.greenPlumBrewing')
+                      : $t('page.farm.activity.greenPlumContinueBrew')
+                  }}
+                </NButton>
+                <NButton
+                  v-if="hasAuth(['farm-activity:green-plum'])"
+                  type="warning"
+                  :loading="pendingKey === 'greenPlumSettle'"
+                  :disabled="!greenPlumActive || greenPlumFinished || greenPlumRound < greenPlumMaxRounds"
+                  @click="settleGreenPlumBrew"
+                >
+                  {{
+                    pendingKey === 'greenPlumSettle'
+                      ? $t('page.farm.activity.greenPlumSelling')
+                      : $t('page.farm.activity.greenPlumSettleBrew')
+                  }}
+                </NButton>
+              </div>
+            </template>
           </div>
         </NCard>
       </NSpin>
