@@ -343,6 +343,15 @@ declare namespace Api {
       originalItems: BagOriginalItem[];
     };
 
+    /** seed entry currently in the bag (bag-priority strategy list) */
+    type BagSeed = {
+      seedId: number;
+      name: string;
+      count: number;
+      requiredLevel: number;
+      plantSize: number;
+    };
+
     type BagSellParams = {
       accountId: number;
       items: BagOriginalItem[];

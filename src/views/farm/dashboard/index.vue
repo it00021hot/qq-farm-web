@@ -705,7 +705,7 @@ onUnmounted(() => {
         </template>
         <div
           ref="logContainer"
-          class="max-h-420px min-h-220px overflow-y-auto rounded-8px bg-gray-50 p-12px font-mono text-13px dark:bg-gray-900"
+          class="h-300px overflow-y-auto rounded-8px bg-gray-50 p-12px font-mono text-13px dark:bg-gray-900"
           @scroll="onLogScroll"
         >
           <div v-if="!filteredLogs.length" class="py-32px text-center text-gray-400">

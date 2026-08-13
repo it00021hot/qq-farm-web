@@ -118,6 +118,14 @@ export function fetchGetFarmSeeds(accountId: number) {
   });
 }
 
+export function fetchGetFarmBagSeeds(accountId: number) {
+  return request<Api.Farm.BagSeed[]>({
+    url: '/farm/bag/seeds',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
 export function fetchSellFarmBag(data: Api.Farm.BagSellParams) {
   return request<Api.Farm.BagSellResult>({
     url: '/farm/bag/sell',

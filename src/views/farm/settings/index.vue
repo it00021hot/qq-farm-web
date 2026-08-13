@@ -26,7 +26,7 @@ import {
 import {
   fetchGetFarmAnalyticsDetail,
   fetchGetFarmAutomationDetail,
-  fetchGetFarmBag,
+  fetchGetFarmBagSeeds,
   fetchGetFarmSeeds,
   fetchModifyFarmAutomation
 } from '@/service/api';
@@ -290,8 +290,7 @@ async function fetchBagSeeds(accountId = farmAccountStore.currentAccountId) {
   bagSeedsLoading.value = true;
   bagSeedsError.value = null;
   try {
-    if (seedOptions.value.length === 0) await fetchSeedOptions(accountId);
-    const { error, data } = await fetchGetFarmBag(accountId);
+    const { error, data } = await fetchGetFarmBagSeeds(accountId);
     if (requestRevision !== bagSeedsRequestRevision || accountId !== farmAccountStore.currentAccountId) return;
     if (error || !data) {
       bagSeeds.value = [];
@@ -302,29 +301,15 @@ async function fetchBagSeeds(accountId = farmAccountStore.currentAccountId) {
           : msg;
       return;
     }
-    const seedMap = new Map(seedOptions.value.map(seed => [seed.seedId, seed]));
-    const merged = new Map<number, BagSeedItem>();
-    for (const item of data.items || []) {
-      const seedId = Number(item.id);
-      if (!Number.isFinite(seedId) || seedId <= 0) continue;
-      const catalog = seedMap.get(seedId);
-      if (!catalog) continue;
-      const plantSize = Number(catalog.size) || 1;
-      if (plantSize < 1) continue;
-      const existing = merged.get(seedId);
-      if (existing) {
-        existing.count += Number(item.count) || 0;
-      } else {
-        merged.set(seedId, {
-          seedId,
-          name: catalog.name || item.name || String(seedId),
-          count: Number(item.count) || 0,
-          requiredLevel: catalog.requiredLevel,
-          plantSize
-        });
-      }
-    }
-    bagSeeds.value = [...merged.values()].filter(seed => seed.count > 0 && seed.plantSize >= 1);
+    bagSeeds.value = (data as BagSeedItem[])
+      .map(item => ({
+        seedId: Number(item.seedId),
+        name: item.name || String(item.seedId),
+        count: Number(item.count) || 0,
+        requiredLevel: Number(item.requiredLevel) || 0,
+        plantSize: Number(item.plantSize) || 1
+      }))
+      .filter(seed => seed.seedId > 0 && seed.count > 0 && seed.plantSize >= 1);
   } catch (e: any) {
     if (requestRevision === bagSeedsRequestRevision && accountId === farmAccountStore.currentAccountId) {
       bagSeeds.value = [];
