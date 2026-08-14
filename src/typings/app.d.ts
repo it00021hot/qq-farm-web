@@ -812,7 +812,7 @@ declare namespace App {
             greenPlumQuoteRound: string;
             greenPlumQuotePending: string;
             greenPlumQuoteUnitPrice: string;
-            greenPlumSettled: string;
+            greenPlumReady: string;
             greenPlumClaimSeed: string;
             greenPlumSeedClaimed: string;
             greenPlumQuoteTotalGold: string;

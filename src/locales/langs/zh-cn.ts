@@ -572,7 +572,7 @@ const local: App.I18n.Schema = {
         greenPlumQuoteRound: '第 {round} 轮',
         greenPlumQuotePending: '待酿造',
         greenPlumQuoteUnitPrice: '单价 {price}',
-        greenPlumSettled: '已出售',
+        greenPlumReady: '酿造完成，可出售',
         greenPlumClaimSeed: '领取今日青梅种子',
         greenPlumSeedClaimed: '今日已领取',
         greenPlumQuoteTotalGold: '第 {round} 轮报价：{total} 金币',

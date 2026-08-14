@@ -577,7 +577,7 @@ const local: App.I18n.Schema = {
         greenPlumQuoteRound: 'Round {round}',
         greenPlumQuotePending: 'Pending',
         greenPlumQuoteUnitPrice: 'Unit price {price}',
-        greenPlumSettled: 'Sold',
+        greenPlumReady: 'Brewing Complete, Ready to Sell',
         greenPlumClaimSeed: 'Claim Today\u2019s Green Plum Seed',
         greenPlumSeedClaimed: 'Claimed today',
         greenPlumQuoteTotalGold: 'Round {round} quote: {total} gold',

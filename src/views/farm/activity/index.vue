@@ -257,6 +257,21 @@ const greenPlumSelectedTotal = computed(() =>
 const greenPlumBusy = computed(() =>
   ['greenPlum', 'greenPlumStart', 'greenPlumContinue', 'greenPlumSettle'].includes(pendingKey.value || '')
 );
+const greenPlumCanStart = computed(() => {
+  const action = greenPlum.value.actions?.start;
+  if (action && typeof action.enabled === 'boolean') return action.enabled;
+  return !greenPlumStarted.value;
+});
+const greenPlumCanContinue = computed(() => {
+  const action = greenPlum.value.actions?.continue;
+  if (action && typeof action.enabled === 'boolean') return action.enabled;
+  return greenPlumStarted.value && !greenPlumFinished.value && greenPlumRound.value < greenPlumMaxRounds.value;
+});
+const greenPlumCanSettle = computed(() => {
+  const action = greenPlum.value.actions?.settle;
+  if (action && typeof action.enabled === 'boolean') return action.enabled;
+  return greenPlumQuotes.value.length > 0 || greenPlumFinished.value;
+});
 
 const pageTitle = computed(() => {
   if (activeTab.value === 'shop') {
@@ -1043,7 +1058,7 @@ onUnmounted(() => {
               {{
                 greenPlumActive
                   ? greenPlumFinished
-                    ? $t('page.farm.activity.greenPlumSettled')
+                    ? $t('page.farm.activity.greenPlumReady')
                     : greenPlumSeedClaimed
                       ? $t('page.farm.activity.greenPlumSeedClaimed')
                       : $t('page.farm.activity.claimable')
@@ -1210,7 +1225,7 @@ onUnmounted(() => {
                   v-if="hasAuth(['farm-activity:green-plum'])"
                   type="primary"
                   :loading="pendingKey === 'greenPlumStart'"
-                  :disabled="!greenPlumActive || greenPlumSelectedIngredients.length === 0"
+                  :disabled="!greenPlumActive || !greenPlumCanStart || greenPlumSelectedIngredients.length === 0"
                   @click="startGreenPlumBrew"
                 >
                   {{
@@ -1262,7 +1277,7 @@ onUnmounted(() => {
                   v-if="hasAuth(['farm-activity:green-plum'])"
                   type="primary"
                   :loading="pendingKey === 'greenPlumContinue'"
-                  :disabled="!greenPlumActive || greenPlumFinished || greenPlumRound >= greenPlumMaxRounds"
+                  :disabled="!greenPlumActive || !greenPlumCanContinue"
                   @click="continueGreenPlumBrew"
                 >
                   {{
@@ -1275,7 +1290,7 @@ onUnmounted(() => {
                   v-if="hasAuth(['farm-activity:green-plum'])"
                   type="warning"
                   :loading="pendingKey === 'greenPlumSettle'"
-                  :disabled="!greenPlumActive || greenPlumFinished || greenPlumRound < greenPlumMaxRounds"
+                  :disabled="!greenPlumActive || !greenPlumCanSettle"
                   @click="settleGreenPlumBrew"
                 >
                   {{
