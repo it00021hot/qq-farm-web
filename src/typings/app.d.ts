@@ -748,6 +748,7 @@ declare namespace App {
             syncSuccessWithCount: string;
             syncFailed: string;
             steal: string;
+            stealAll: string;
             help: string;
             bad: string;
             addBlacklist: string;
@@ -763,6 +764,10 @@ declare namespace App {
             blacklistConfirm: string;
             unblacklistConfirm: string;
             opSuccess: string;
+            opNothing: string;
+            opNoStealable: string;
+            stealAllDone: string;
+            stealAllEmpty: string;
             opFailed: string;
             blacklistSuccess: string;
             blacklistFailed: string;
@@ -981,8 +986,6 @@ declare namespace App {
             landUpgrade: string;
             friend: string;
             friendSteal: string;
-            friendStealActivityOnly: string;
-            friendStealActivityHint: string;
             friendHelp: string;
             friendHelpExpLimit: string;
             friendBad: string;

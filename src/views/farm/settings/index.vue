@@ -101,20 +101,19 @@ const automation = reactive<Api.Farm.AutomationConfig>({
   land_upgrade: true,
   friend: true,
   friend_steal: true,
-  friend_steal_activity_only: true,
   friend_help: false,
   friend_bad: false,
   friend_help_exp_limit: false,
   task: true,
   sell: true,
   fertilizer: 'smart',
-  fertilizer_gift: false,
+  fertilizer_gift: true,
   fertilizer_buy_organic: false,
   fertilizer_buy_normal: false,
   fertilizer_multi_season: true,
   fertilizer_land_types: [...farmAllFertilizerLandTypes],
   fertilizer_smart_seconds: 360,
-  skip_own_weed_bug: false
+  skip_own_weed_bug: true
 });
 
 const showFertilizerBuyPanel = computed(
@@ -465,7 +464,6 @@ function applyDetail(data: Api.Farm.AccountAutomationDetail) {
   automation.land_upgrade = !!src.land_upgrade;
   automation.friend = !!src.friend;
   automation.friend_steal = !!src.friend_steal;
-  automation.friend_steal_activity_only = src.friend_steal_activity_only ?? true;
   automation.friend_help = !!src.friend_help;
   automation.friend_bad = !!src.friend_bad;
   automation.friend_help_exp_limit = !!src.friend_help_exp_limit;
@@ -565,7 +563,6 @@ async function handleSaveAutomation() {
         land_upgrade: automation.land_upgrade,
         friend: automation.friend,
         friend_steal: automation.friend_steal,
-        friend_steal_activity_only: automation.friend_steal_activity_only,
         friend_help: automation.friend_help,
         friend_bad: automation.friend_bad,
         friend_help_exp_limit: automation.friend_help_exp_limit,
@@ -969,10 +966,6 @@ onMounted(async () => {
                 <NSwitch v-model:value="automation.friend_steal" />
                 <span>{{ $t('page.farm.settings.friendSteal') }}</span>
               </div>
-              <div class="auto-switch-item" :class="{ 'is-disabled': !automation.friend_steal }">
-                <NSwitch v-model:value="automation.friend_steal_activity_only" :disabled="!automation.friend_steal" />
-                <span>{{ $t('page.farm.settings.friendStealActivityOnly') }}</span>
-              </div>
               <div class="auto-switch-item">
                 <NSwitch v-model:value="automation.friend_help" />
                 <span>{{ $t('page.farm.settings.friendHelp') }}</span>
@@ -986,13 +979,6 @@ onMounted(async () => {
                 <span>{{ $t('page.farm.settings.friendHelpExpLimit') }}</span>
               </div>
             </div>
-            <NText
-              v-if="automation.friend_steal && automation.friend_steal_activity_only"
-              depth="3"
-              class="mt-8px text-12px"
-            >
-              {{ $t('page.farm.settings.friendStealActivityHint') }}
-            </NText>
           </template>
 
           <NDivider title-placement="left">{{ $t('page.farm.settings.fertilizer') }}</NDivider>

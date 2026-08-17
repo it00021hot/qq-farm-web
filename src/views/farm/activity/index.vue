@@ -150,7 +150,7 @@ const exchangeCount = ref(1);
 
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
-const tabs: Array<{ key: ActivityTab; labelKey: App.I18n.I18nKey }> = [
+const allTabs: Array<{ key: ActivityTab; labelKey: App.I18n.I18nKey }> = [
   { key: 'travel', labelKey: 'page.farm.activity.tabTravel' },
   { key: 'constellation', labelKey: 'page.farm.activity.tabConstellation' },
   { key: 'shop', labelKey: 'page.farm.activity.tabShop' },
@@ -226,6 +226,16 @@ const greenPlumBalance = computed(() => {
   if (greenPlum.value.balanceKnown === false) return '--';
   return greenPlum.value.balance ?? '0';
 });
+const visibleTabs = computed(() =>
+  allTabs
+    .filter(tab => (tab.key === 'greenPlum' ? greenPlumActive.value : true))
+    .map(tab => {
+      if (tab.key === 'greenPlum' && greenPlum.value.name) {
+        return { ...tab, label: String(greenPlum.value.name) };
+      }
+      return { ...tab, label: '' };
+    })
+);
 const greenPlumStarted = computed(() => greenPlum.value.started === true);
 const greenPlumFinished = computed(() => greenPlum.value.finished === true);
 const greenPlumRound = computed(() => Number(greenPlum.value.currentRound || 0));
@@ -418,6 +428,11 @@ function pickConstellationFocus(groups: ConstellationGroup[]) {
   return sorted[0]?.id || '';
 }
 
+function ensureActiveTabVisible() {
+  if (visibleTabs.value.some(tab => tab.key === activeTab.value)) return;
+  activeTab.value = visibleTabs.value[0]?.key || 'travel';
+}
+
 function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   const snap = (data.snapshot || data) as Api.Farm.ActivitySnapshot;
   season.value = (snap.season as Record<string, unknown>) || {};
@@ -427,6 +442,7 @@ function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   greenPlum.value = (snap.greenPlum as GreenPlum) || {};
   capabilities.value = snap.capabilities || data.capabilities || {};
   actions.value = snap.actions || data.actions || {};
+  ensureActiveTabVisible();
 
   const groups = (constellation.value.groups as ConstellationGroup[]) || [];
   selectedConstellationId.value = pickConstellationFocus(groups);
@@ -738,7 +754,7 @@ onUnmounted(() => {
 
       <div class="flex flex-wrap gap-8px border-b border-gray-200 pb-12px dark:border-gray-700">
         <NButton
-          v-for="tab in tabs"
+          v-for="tab in visibleTabs"
           :key="tab.key"
           size="small"
           :type="activeTab === tab.key ? 'primary' : 'default'"
@@ -746,7 +762,7 @@ onUnmounted(() => {
           @click="activeTab = tab.key"
         >
           <NSpace :size="6" align="center">
-            <span>{{ $t(tab.labelKey) }}</span>
+            <span>{{ tab.label || $t(tab.labelKey) }}</span>
             <NTag v-if="tabBadges[tab.key]" size="tiny" type="error" :bordered="false" round>•</NTag>
           </NSpace>
         </NButton>

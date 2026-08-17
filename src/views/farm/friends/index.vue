@@ -53,6 +53,7 @@ const syncing = ref(false);
 const interactLoading = ref(false);
 const interactError = ref('');
 const opLoadingKey = ref<string | null>(null);
+const stealAllLoading = ref(false);
 const blacklistLoading = ref(false);
 const friends = ref<Api.Farm.Friend[]>([]);
 const friendBlacklist = ref<number[]>([]);
@@ -92,6 +93,15 @@ function hasActionStatus(friend: Api.Farm.Friend) {
   return friendStatusText(friend) !== $t('page.farm.friends.noAction');
 }
 
+function canStealFriend(friend: Api.Farm.Friend) {
+  return Number(friend.plant?.stealNum || 0) > 0;
+}
+
+function canHelpFriend(friend: Api.Farm.Friend) {
+  const plant = friend.plant || {};
+  return Number(plant.dryNum || 0) > 0 || Number(plant.weedNum || 0) > 0 || Number(plant.insectNum || 0) > 0;
+}
+
 function isBlacklisted(gid: number) {
   return friendBlacklist.value.includes(Number(gid));
 }
@@ -122,6 +132,8 @@ const filteredFriends = computed(() => {
 });
 
 const normalFriends = computed(() => filteredFriends.value.filter(friend => !isBlacklisted(friend.gid)));
+
+const stealableFriends = computed(() => normalFriends.value.filter(friend => canStealFriend(friend)));
 
 const blacklistFriends = computed(() => {
   const byGid = new Map(friends.value.map(f => [Number(f.gid), f]));
@@ -300,26 +312,75 @@ async function toggleFriend(gid: number) {
   await loadFriendLands(gid);
 }
 
-async function runFriendOp(friend: Api.Farm.Friend, op: FriendOp, event?: MouseEvent) {
+async function runFriendOp(
+  friend: Api.Farm.Friend,
+  op: FriendOp,
+  event?: MouseEvent,
+  options?: { quiet?: boolean }
+): Promise<boolean> {
   event?.stopPropagation();
-  if (!farmAccountStore.currentAccountId || !hasAuth('farm-friend:op')) return;
+  if (!farmAccountStore.currentAccountId || !hasAuth('farm-friend:op')) return false;
+  const quiet = !!options?.quiet;
   const key = opKey(friend.gid, op);
   opLoadingKey.value = key;
   try {
-    const { error } = await fetchFarmFriendOp({
+    const { error, data } = await fetchFarmFriendOp({
       accountId: farmAccountStore.currentAccountId,
       gid: friend.gid,
       op
     });
     if (error) {
-      message.error(error.message || $t('page.farm.friends.opFailed'));
-      return;
+      if (!quiet) message.error(error.message || $t('page.farm.friends.opFailed'));
+      return false;
     }
-    message.success($t('page.farm.friends.opSuccess'));
+    const count = Number(data?.count || 0);
+    if (count > 0) {
+      if (!quiet) {
+        const summary = String(data?.summary || data?.helpSummary || '').trim();
+        message.success(summary || $t('page.farm.friends.opSuccess'));
+      }
+      applyOpOptimisticPlant(friend.gid, op);
+      if (expandedGid.value === friend.gid) {
+        await loadFriendLands(friend.gid);
+      }
+      return true;
+    }
+    if (!quiet) {
+      if (op === 'steal') {
+        message.info($t('page.farm.friends.opNoStealable'));
+      } else {
+        message.info($t('page.farm.friends.opNothing'));
+      }
+    }
     applyOpOptimisticPlant(friend.gid, op);
-    await loadFriendLands(friend.gid);
+    if (expandedGid.value === friend.gid) {
+      await loadFriendLands(friend.gid);
+    }
+    return false;
   } finally {
     if (opLoadingKey.value === key) opLoadingKey.value = null;
+  }
+}
+
+async function stealAllFriends() {
+  if (!farmAccountStore.currentAccountId || !hasAuth('farm-friend:op') || stealAllLoading.value) return;
+  const targets = [...stealableFriends.value];
+  if (!targets.length) {
+    message.info($t('page.farm.friends.stealAllEmpty'));
+    return;
+  }
+  stealAllLoading.value = true;
+  let ok = 0;
+  let skip = 0;
+  try {
+    for (const friend of targets) {
+      const stolen = await runFriendOp(friend, 'steal', undefined, { quiet: true });
+      if (stolen) ok += 1;
+      else skip += 1;
+    }
+    message.success($t('page.farm.friends.stealAllDone', { ok, skip }));
+  } finally {
+    stealAllLoading.value = false;
   }
 }
 
@@ -493,6 +554,17 @@ onUnmounted(() => {
           <template #header-extra>
             <NSpace>
               <NButton
+                v-if="hasAuth('farm-friend:op')"
+                size="small"
+                type="primary"
+                ghost
+                :loading="stealAllLoading"
+                :disabled="!stealableFriends.length"
+                @click="stealAllFriends"
+              >
+                {{ $t('page.farm.friends.stealAll') }}
+              </NButton>
+              <NButton
                 v-if="hasAuth('farm-friend:sync')"
                 size="small"
                 type="primary"
@@ -565,27 +637,26 @@ onUnmounted(() => {
 
                   <div class="flex flex-wrap gap-8px" @click.stop>
                     <template v-if="hasAuth('farm-friend:op')">
-                      <NPopconfirm @positive-click="runFriendOp(friend, 'steal')">
-                        <template #trigger>
-                          <NButton
-                            size="small"
-                            type="primary"
-                            ghost
-                            :loading="opLoadingKey === opKey(friend.gid, 'steal')"
-                          >
-                            {{ $t('page.farm.friends.steal') }}
-                          </NButton>
-                        </template>
-                        {{ $t('page.farm.friends.opConfirm') }}
-                      </NPopconfirm>
-                      <NPopconfirm @positive-click="runFriendOp(friend, 'help')">
-                        <template #trigger>
-                          <NButton size="small" type="info" ghost :loading="opLoadingKey === opKey(friend.gid, 'help')">
-                            {{ $t('page.farm.friends.help') }}
-                          </NButton>
-                        </template>
-                        {{ $t('page.farm.friends.opConfirm') }}
-                      </NPopconfirm>
+                      <NButton
+                        v-if="canStealFriend(friend)"
+                        size="small"
+                        type="primary"
+                        ghost
+                        :loading="opLoadingKey === opKey(friend.gid, 'steal')"
+                        @click="runFriendOp(friend, 'steal', $event)"
+                      >
+                        {{ $t('page.farm.friends.steal') }}
+                      </NButton>
+                      <NButton
+                        v-if="canHelpFriend(friend)"
+                        size="small"
+                        type="info"
+                        ghost
+                        :loading="opLoadingKey === opKey(friend.gid, 'help')"
+                        @click="runFriendOp(friend, 'help', $event)"
+                      >
+                        {{ $t('page.farm.friends.help') }}
+                      </NButton>
                       <NPopconfirm @positive-click="runFriendOp(friend, 'bad')">
                         <template #trigger>
                           <NButton
