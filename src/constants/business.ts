@@ -52,6 +52,17 @@ export const farmRunStatusOptions: CommonType.Option<Api.Farm.RunStatus, App.I18
   { value: 2, label: 'page.farm.common.runStatus.error' }
 ];
 
+/** farm wechat / app-bao authorization status */
+export const farmAuthStatusRecord: Record<'authorized' | 'unauthorized', App.I18n.I18nKey> = {
+  authorized: 'page.farm.common.authStatus.authorized',
+  unauthorized: 'page.farm.common.authStatus.unauthorized'
+};
+
+export const farmAuthStatusOptions: CommonType.Option<'authorized' | 'unauthorized', App.I18n.I18nKey>[] = [
+  { value: 'authorized', label: 'page.farm.common.authStatus.authorized' },
+  { value: 'unauthorized', label: 'page.farm.common.authStatus.unauthorized' }
+];
+
 /** fertilizer mode */
 export const farmFertilizerModeRecord: Record<Api.Farm.FertilizerMode, App.I18n.I18nKey> = {
   none: 'page.farm.common.fertilizerMode.none',

@@ -334,6 +334,10 @@ const local: App.I18n.Schema = {
           running: 'Running',
           error: 'Error'
         },
+        authStatus: {
+          authorized: 'Authorized',
+          unauthorized: 'Unauthorized'
+        },
         fertilizerMode: {
           none: 'None',
           normal: 'Normal fertilizer only',
@@ -482,6 +486,7 @@ const local: App.I18n.Schema = {
         qq: 'QQ',
         remark: 'Remark',
         runStatus: 'Run Status',
+        authStatus: 'Authorization',
         status: 'Status',
         lastOnlineAt: 'Last Online',
         addAccount: 'Add Account',
@@ -508,6 +513,7 @@ const local: App.I18n.Schema = {
         insectNum: 'Need Bug',
         syncedAt: 'Synced At',
         sync: 'Sync Friends',
+        refreshList: 'Refresh List',
         syncSuccess: 'Friends synced',
         syncSuccessWithCount: 'Synced {count} friends',
         syncFailed: 'Failed to sync friends',

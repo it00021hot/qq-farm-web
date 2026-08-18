@@ -25,6 +25,7 @@ import {
 } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
+import { useFarmWs } from '@/hooks/business/farm-ws';
 import { resolveCatalogImage } from '@/views/farm/game-config/shared';
 import {
   landCardClass,
@@ -199,6 +200,13 @@ async function loadFriends() {
     }
   } finally {
     loading.value = false;
+  }
+}
+
+async function refreshFriendList() {
+  await loadFriends();
+  if (expandedGid.value) {
+    await loadFriendLands(expandedGid.value);
   }
 }
 
@@ -527,16 +535,49 @@ watch(
   }
 );
 
+let listRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleFriendListRefresh(gid?: number) {
+  if (gid && gid > 0) {
+    applyOpOptimisticPlant(gid, 'steal');
+  }
+  if (listRefreshTimer) clearTimeout(listRefreshTimer);
+  listRefreshTimer = setTimeout(() => {
+    listRefreshTimer = null;
+    void loadFriends();
+    if (expandedGid.value) void loadFriendLands(expandedGid.value);
+  }, 800);
+}
+
+const { connect } = useFarmWs({
+  onMessage(type, payload, raw) {
+    const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+    const accountId = Number(body.accountId || raw?.accountId || 0);
+    const current = farmAccountStore.currentAccountId;
+    if (current && accountId && accountId !== current) return;
+
+    if (type === 'friend_interact') {
+      const action = String(body.action || body.event || '');
+      const result = String(body.result || '');
+      const gid = Number(body.targetGid || body.friendGid || body.gid || 0);
+      if ((action.includes('steal') || action === '偷菜') && result !== 'error') {
+        scheduleFriendListRefresh(gid);
+      }
+    }
+  }
+});
+
 onMounted(async () => {
   if (!farmAccountStore.accounts.length) {
     await farmAccountStore.loadAccounts();
   }
   await loadFriends();
   startTick();
+  connect();
 });
 
 onUnmounted(() => {
   stopTick();
+  if (listRefreshTimer) clearTimeout(listRefreshTimer);
 });
 </script>
 
@@ -573,8 +614,8 @@ onUnmounted(() => {
               >
                 {{ $t('page.farm.friends.sync') }}
               </NButton>
-              <NButton size="small" :loading="loading" @click="loadFriends">
-                {{ $t('common.refresh') }}
+              <NButton size="small" :loading="loading" @click="refreshFriendList">
+                {{ $t('page.farm.friends.refreshList') }}
               </NButton>
             </NSpace>
           </template>

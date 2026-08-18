@@ -10,6 +10,7 @@ function cleanAccountListParams(params?: Api.Farm.AccountSearchParams) {
   if (params.platform) out.platform = params.platform;
   if (params.status != null && params.status !== ('' as any)) out.status = params.status as any;
   if (params.runStatus != null && params.runStatus !== ('' as any)) out.runStatus = params.runStatus as any;
+  if (params.authStatus) out.authStatus = params.authStatus;
   return out;
 }
 

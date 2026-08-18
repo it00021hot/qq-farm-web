@@ -570,6 +570,10 @@ declare namespace App {
               running: string;
               error: string;
             };
+            authStatus: {
+              authorized: string;
+              unauthorized: string;
+            };
             fertilizerMode: {
               none: string;
               normal: string;
@@ -718,6 +722,7 @@ declare namespace App {
             qq: string;
             remark: string;
             runStatus: string;
+            authStatus: string;
             status: string;
             lastOnlineAt: string;
             addAccount: string;
@@ -744,6 +749,7 @@ declare namespace App {
             insectNum: string;
             syncedAt: string;
             sync: string;
+            refreshList: string;
             syncSuccess: string;
             syncSuccessWithCount: string;
             syncFailed: string;

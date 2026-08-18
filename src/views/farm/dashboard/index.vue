@@ -372,6 +372,15 @@ function formatEventMessage(
       isWarn: st === 'error'
     };
   }
+  if (type === 'runtime_log') {
+    const event = String(body.event || '登录');
+    return {
+      tag: body.isWarn ? '错误' : String(body.tag || '系统'),
+      event,
+      message: String(body.message || body.msg || ''),
+      isWarn: Boolean(body.isWarn)
+    };
+  }
   return { tag: '系统', event: type, message: JSON.stringify(body), isWarn: false };
 }
 
@@ -502,6 +511,13 @@ const { connected, connect } = useFarmWs({
       }
       void farmAccountStore.loadAccounts();
       if (accountId && current === accountId) void loadStatus({ silent: true });
+      return;
+    }
+
+    if (type === 'runtime_log') {
+      if (current && accountId && accountId !== current) return;
+      const formatted = formatEventMessage(type, payload);
+      pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
       return;
     }
 

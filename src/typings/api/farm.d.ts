@@ -30,12 +30,15 @@ declare namespace Api {
       runStatus: RunStatus;
       lastOnlineAt: number;
       status: EnableStatus;
+      wxOpenid?: string;
+      wxAuthorized?: boolean;
       createdAt: number;
       updatedAt: number;
     };
 
     type AccountSearchParams = CommonType.RecordNullable<
-      Pick<Account, 'status' | 'runStatus' | 'platform'> & CommonSearchParams & { keyword?: string }
+      Pick<Account, 'status' | 'runStatus' | 'platform'> &
+        CommonSearchParams & { keyword?: string; authStatus?: 'authorized' | 'unauthorized' }
     >;
 
     type AccountList = Common.PaginatingQueryRecord<Account>;

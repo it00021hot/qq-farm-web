@@ -330,6 +330,10 @@ const local: App.I18n.Schema = {
           running: '运行中',
           error: '异常'
         },
+        authStatus: {
+          authorized: '已授权',
+          unauthorized: '未授权'
+        },
         fertilizerMode: {
           none: '不施肥',
           normal: '仅普通化肥',
@@ -478,6 +482,7 @@ const local: App.I18n.Schema = {
         qq: 'QQ',
         remark: '备注',
         runStatus: '运行状态',
+        authStatus: '授权状态',
         status: '状态',
         lastOnlineAt: '最近在线',
         addAccount: '新增账号',
@@ -504,6 +509,7 @@ const local: App.I18n.Schema = {
         insectNum: '需除虫',
         syncedAt: '同步时间',
         sync: '同步好友',
+        refreshList: '刷新列表',
         syncSuccess: '好友同步成功',
         syncSuccessWithCount: '已同步 {count} 位好友',
         syncFailed: '好友同步失败',
