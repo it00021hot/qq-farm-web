@@ -4,7 +4,9 @@ import { farmEnableStatusOptions, farmPlatformOptions, translateStringOptions } 
 import {
   fetchAddFarmAccount,
   fetchConfirmFarmWxLogin,
+  fetchConfirmFarmWxQuickLogin,
   fetchCreateFarmWxLoginTask,
+  fetchCreateFarmWxQuickLoginSession,
   fetchFarmWxLoginCode,
   fetchFarmWxLoginStatus,
   fetchModifyFarmAccount,
@@ -46,12 +48,24 @@ const title = computed(() => {
 });
 
 type Model = Api.Farm.AccountCreateParams & Partial<Pick<Api.Farm.AccountUpdateParams, 'id' | 'status'>>;
-type LoginTab = 'code' | 'wx_qr';
+type LoginTab = 'code' | 'wx';
+type WxMode = 'local' | 'qr';
 
 const model = ref<Model>(createDefaultModel());
 const urlHint = ref('');
 const activeLoginTab = ref<LoginTab>('code');
+const wxMode = ref<WxMode>('local');
 const wxTaskId = ref('');
+const wxSessionId = ref('');
+const wxQuickConfig = ref<{
+  appId: string;
+  scope: string;
+  redirectUri: string;
+  state: string;
+  ports: number[];
+} | null>(null);
+const wxQuickPort = ref<number | null>(null);
+const wxQuickProfile = ref<{ authorizeUuid?: string; nickname?: string; headimgurl?: string } | null>(null);
 const wxStatus = ref('');
 const wxError = ref('');
 const wxLoading = ref(false);
@@ -74,7 +88,7 @@ const rules = computed<Record<string, App.Global.FormRule | App.Global.FormRule[
   const base: Record<string, App.Global.FormRule | App.Global.FormRule[]> = {
     platform: defaultRequiredRule
   };
-  if (activeLoginTab.value !== 'wx_qr') {
+  if (activeLoginTab.value !== 'wx') {
     base.code = defaultRequiredRule;
   }
   return base;
@@ -83,7 +97,8 @@ const rules = computed<Record<string, App.Global.FormRule | App.Global.FormRule[
 const statusOptions = computed(() => translateStringOptions(farmEnableStatusOptions));
 const platformOptions = computed(() => translateStringOptions(farmPlatformOptions));
 const isAddMode = computed(() => props.operateType === 'add');
-const isWxQrTab = computed(() => activeLoginTab.value === 'wx_qr');
+const isWxTab = computed(() => activeLoginTab.value === 'wx');
+const isWxLocalMode = computed(() => wxMode.value === 'local');
 
 function decodeParam(value: string | null | undefined): string {
   const raw = String(value || '').trim();
@@ -179,6 +194,10 @@ function resetWxLogin() {
     wxQrObjectUrl = '';
   }
   wxTaskId.value = '';
+  wxSessionId.value = '';
+  wxQuickConfig.value = null;
+  wxQuickPort.value = null;
+  wxQuickProfile.value = null;
   wxStatus.value = '';
   wxError.value = '';
   wxQrUrl.value = '';
@@ -199,56 +218,220 @@ async function fetchWxQrBlob(qrUrl: string) {
   return response.blob();
 }
 
-async function getWxCodeAndSave() {
+function parseLocalWechatResponse(text: string): any {
+  let value = JSON.parse(text);
+  if (typeof value === 'string') value = JSON.parse(value);
+  return value;
+}
+
+async function localWechatRequest(
+  port: number,
+  path: string,
+  body: Record<string, unknown>,
+  timeoutMs = 3000
+): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`https://localhost.weixin.qq.com:${port}${path}`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return parseLocalWechatResponse(await response.text());
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function checkLoginBody(config: NonNullable<typeof wxQuickConfig.value>) {
+  return {
+    apiname: 'qrconnectchecklogin',
+    jsdata: {
+      appid: config.appId,
+      scope: config.scope,
+      redirect_uri: config.redirectUri,
+      state: config.state
+    }
+  };
+}
+
+function authorizePosition() {
+  const width = 360;
+  const height = 263;
+  const left = window.screenX || window.screenLeft || 0;
+  const top = window.screenY || window.screenTop || 0;
+  return {
+    x: Math.round(left + (window.outerWidth || window.innerWidth) / 2 - width / 2),
+    y: Math.round(top + (window.outerHeight || window.innerHeight) / 2 - height / 2)
+  };
+}
+
+async function saveWxCode(codeInput: string) {
   wxSubmitting.value = true;
-  wxStatus.value = '正在获取登录 Code...';
+  wxStatus.value = '正在保存账号...';
+  try {
+    const code = String(codeInput).trim();
+    const name = String(model.value.name || '').trim();
+    const remark = model.value.remark;
+    if (props.operateType === 'edit') {
+      if (!model.value.id) {
+        throw new Error('账号信息不完整');
+      }
+      const { error: modifyError } = await fetchModifyFarmAccount({
+        id: model.value.id,
+        code,
+        name,
+        platform: 'wx',
+        remark,
+        status: (Number(model.value.status || 1) === 2 ? 2 : 1) as unknown as Api.Farm.EnableStatus
+      });
+      if (modifyError) {
+        throw new Error((modifyError as any)?.message || '更新账号失败');
+      }
+      window.$message?.success($t('common.updateSuccess'));
+    } else {
+      const { data: added, error: addError } = await fetchAddFarmAccount({
+        name,
+        code,
+        platform: 'wx',
+        remark
+      });
+      if (addError) {
+        throw new Error((addError as any)?.message || '保存账号失败');
+      }
+      if (added?.id) {
+        const { error: startError } = await fetchStartFarmAccount(added.id);
+        if (startError) {
+          window.$message?.warning($t('common.addSuccess') + '，自动启动失败，请手动点击启动');
+        } else {
+          window.$message?.success($t('common.addSuccess') + '，已自动启动');
+        }
+      } else {
+        window.$message?.success($t('common.addSuccess'));
+      }
+    }
+    closeDrawer();
+    emit('submitted');
+  } finally {
+    wxSubmitting.value = false;
+  }
+}
+
+async function getWxCodeAndSave() {
   const { data, error } = await fetchFarmWxLoginCode(wxTaskId.value);
   if (error || !data?.code) {
     throw new Error((error as any)?.message || '未获取到登录 Code');
   }
-  const code = String(data.code).trim();
-  const name = String(model.value.name || '').trim();
-  const remark = model.value.remark;
-  if (props.operateType === 'edit') {
-    if (!model.value.id) {
-      throw new Error('账号信息不完整');
+  await saveWxCode(String(data.code));
+}
+
+async function detectLocalWechat() {
+  wxLoading.value = true;
+  wxError.value = '';
+  wxQuickConfig.value = null;
+  wxQuickPort.value = null;
+  wxQuickProfile.value = null;
+  wxStatus.value = '正在检测本机微信...';
+  try {
+    const { data, error } = await fetchCreateFarmWxQuickLoginSession();
+    if (error || !data?.session_id) {
+      throw new Error((error as any)?.message || '创建快速授权会话失败');
     }
-    const { error: modifyError } = await fetchModifyFarmAccount({
-      id: model.value.id,
-      code,
-      name,
-      platform: 'wx',
-      remark,
-      status: (Number(model.value.status || 1) === 2 ? 2 : 1) as unknown as Api.Farm.EnableStatus
-    });
-    if (modifyError) {
-      throw new Error((modifyError as any)?.message || '更新账号失败');
+    wxSessionId.value = String(data.session_id);
+    const config = {
+      appId: String(data.appid),
+      scope: String(data.scope),
+      redirectUri: String(data.redirect_uri),
+      state: String(data.state),
+      ports: (data.ports || []).map(Number)
+    };
+    wxQuickConfig.value = config;
+    const results = await Promise.all(
+      config.ports.map(async port => {
+        try {
+          return { port, data: await localWechatRequest(port, '/api/check-login', checkLoginBody(config)) };
+        } catch {
+          return null;
+        }
+      })
+    );
+    const match = results.find(item => item && Number(item.data?.errcode) === 0 && item.data?.jsdata?.authorize_uuid);
+    if (!match) {
+      throw new Error('未检测到可用的桌面微信');
     }
-    window.$message?.success($t('common.updateSuccess'));
-  } else {
-    const { data: added, error: addError } = await fetchAddFarmAccount({
-      name,
-      code,
-      platform: 'wx',
-      remark
-    });
-    if (addError) {
-      throw new Error((addError as any)?.message || '保存账号失败');
-    }
-    // QR add: start running immediately (code-paste add still requires manual start).
-    if (added?.id) {
-      const { error: startError } = await fetchStartFarmAccount(added.id);
-      if (startError) {
-        window.$message?.warning($t('common.addSuccess') + '，自动启动失败，请手动点击启动');
-      } else {
-        window.$message?.success($t('common.addSuccess') + '，已自动启动');
-      }
-    } else {
-      window.$message?.success($t('common.addSuccess'));
-    }
+    wxQuickPort.value = match.port;
+    wxQuickProfile.value = {
+      authorizeUuid: match.data.jsdata.authorize_uuid,
+      nickname: match.data.jsdata.nickname,
+      headimgurl: match.data.jsdata.headimgurl
+    };
+    wxStatus.value = wxQuickProfile.value.nickname
+      ? `${wxQuickProfile.value.nickname} · 请在电脑微信中确认`
+      : '本机微信已就绪，请点击授权';
+  } catch (err: any) {
+    wxError.value = err?.message || '本机微信不可用';
+    wxStatus.value = '本机快速授权不可用，已切换到扫码';
+    wxMode.value = 'qr';
+    void startWxLogin();
+  } finally {
+    wxLoading.value = false;
   }
-  closeDrawer();
-  emit('submitted');
+}
+
+async function authorizeLocalWechat() {
+  const config = wxQuickConfig.value;
+  const port = wxQuickPort.value;
+  const profile = wxQuickProfile.value;
+  if (!config || !port || !profile?.authorizeUuid || !wxSessionId.value) {
+    wxError.value = '请先检测本机微信';
+    return;
+  }
+  wxSubmitting.value = true;
+  wxError.value = '';
+  wxStatus.value = '等待电脑微信确认...';
+  try {
+    const result = await localWechatRequest(
+      port,
+      '/api/authorize',
+      {
+        apiname: 'qrconnectfastauthorize',
+        jsdata: {
+          data: JSON.stringify(authorizePosition()),
+          appid: config.appId,
+          scope: config.scope,
+          redirect_uri: config.redirectUri,
+          state: config.state,
+          authorize_uuid: profile.authorizeUuid
+        }
+      },
+      120000
+    );
+    const errcode = Number(result?.errcode);
+    if (errcode === 10050) throw new Error('已在微信中拒绝授权');
+    if (errcode === 10046) throw new Error('授权已超时，请重新检测');
+    if (errcode === 10057) {
+      wxMode.value = 'qr';
+      void startWxLogin();
+      throw new Error('当前应用仅支持扫码授权');
+    }
+    if (errcode !== 0 || !result?.jsdata?.redirect_url) {
+      throw new Error('桌面微信未返回有效授权结果');
+    }
+    const { data, error } = await fetchConfirmFarmWxQuickLogin(wxSessionId.value, String(result.jsdata.redirect_url));
+    if (error || !data?.code) {
+      throw new Error((error as any)?.message || '快速授权确认失败');
+    }
+    await saveWxCode(String(data.code));
+  } catch (err: any) {
+    wxError.value = err?.message || '快速授权失败';
+    wxStatus.value = '快速授权失败';
+  } finally {
+    wxSubmitting.value = false;
+  }
 }
 
 async function confirmWxLogin() {
@@ -308,13 +491,27 @@ async function startWxLogin() {
 }
 
 function onLoginTabChange(tab: string | number) {
-  const next = (tab === 'wx_qr' ? 'wx_qr' : 'code') as LoginTab;
+  const next = (tab === 'wx' ? 'wx' : 'code') as LoginTab;
   activeLoginTab.value = next;
-  if (next === 'wx_qr') {
+  if (next === 'wx') {
     model.value.platform = 'wx';
-    void startWxLogin();
+    if (wxMode.value === 'local') {
+      void detectLocalWechat();
+    } else {
+      void startWxLogin();
+    }
   } else {
     resetWxLogin();
+  }
+}
+
+function onWxModeChange(mode: string | number) {
+  wxMode.value = mode === 'qr' ? 'qr' : 'local';
+  resetWxLogin();
+  if (wxMode.value === 'local') {
+    void detectLocalWechat();
+  } else {
+    void startWxLogin();
   }
 }
 
@@ -322,6 +519,7 @@ function handleInitModel() {
   model.value = createDefaultModel();
   urlHint.value = '';
   activeLoginTab.value = 'code';
+  wxMode.value = 'local';
   resetWxLogin();
 
   if (props.operateType === 'edit' && props.rowData) {
@@ -343,8 +541,8 @@ function closeDrawer() {
 }
 
 async function handleSubmit() {
-  if (activeLoginTab.value === 'wx_qr') {
-    window.$message?.info(isAddMode.value ? '请使用微信扫码完成添加' : '请使用微信扫码完成更新');
+  if (activeLoginTab.value === 'wx') {
+    window.$message?.info(isAddMode.value ? '请使用微信授权完成添加' : '请使用微信授权完成更新');
     return;
   }
 
@@ -419,10 +617,10 @@ onBeforeUnmount(() => {
 
         <NTabs :value="activeLoginTab" type="segment" class="mb-12px" @update:value="onLoginTabChange">
           <NTab name="code" tab="输入 code" />
-          <NTab name="wx_qr" tab="微信扫码" />
+          <NTab name="wx" tab="微信授权" />
         </NTabs>
 
-        <template v-if="!isWxQrTab">
+        <template v-if="!isWxTab">
           <NFormItem :label="$t('page.farm.account.code')" path="code">
             <NInput
               :value="model.code"
@@ -443,7 +641,37 @@ onBeforeUnmount(() => {
         </template>
 
         <template v-else>
-          <div class="mb-12px flex flex-col items-center gap-12px">
+          <NTabs :value="wxMode" type="line" class="mb-12px" @update:value="onWxModeChange">
+            <NTab name="local" tab="本机微信" />
+            <NTab name="qr" tab="扫码" />
+          </NTabs>
+
+          <div v-if="isWxLocalMode" class="mb-12px flex flex-col items-center gap-12px">
+            <NSpin :show="wxLoading || wxSubmitting">
+              <div
+                class="min-h-180px w-full flex flex-col items-center justify-center gap-8px rounded-8px bg-#f5f5f5 p-16px"
+              >
+                <img
+                  v-if="wxQuickProfile?.headimgurl"
+                  :src="wxQuickProfile.headimgurl"
+                  alt="微信头像"
+                  class="h-72px w-72px rounded-full object-cover"
+                />
+                <span v-else class="text-40px">微</span>
+                <p class="text-14px font-600">{{ wxQuickProfile?.nickname || '本机微信' }}</p>
+                <p class="text-center text-13px text-#666">{{ wxStatus || '准备检测本机微信' }}</p>
+              </div>
+            </NSpin>
+            <p v-if="wxError" class="text-13px text-error">{{ wxError }}</p>
+            <NSpace>
+              <NButton type="primary" :loading="wxSubmitting" :disabled="!wxQuickPort" @click="authorizeLocalWechat">
+                使用本机微信授权
+              </NButton>
+              <NButton size="small" :loading="wxLoading" @click="detectLocalWechat">重新检测</NButton>
+            </NSpace>
+          </div>
+
+          <div v-else class="mb-12px flex flex-col items-center gap-12px">
             <NSpin :show="wxLoading || wxSubmitting">
               <div class="h-220px w-220px flex items-center justify-center overflow-hidden rounded-8px bg-#f5f5f5">
                 <img v-if="wxQrUrl" :src="wxQrUrl" alt="微信登录二维码" class="h-full w-full object-contain" />
@@ -470,7 +698,7 @@ onBeforeUnmount(() => {
       <template #footer>
         <NSpace :size="16">
           <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
-          <NButton v-if="!isWxQrTab" type="primary" @click="handleSubmit">
+          <NButton v-if="!isWxTab" type="primary" @click="handleSubmit">
             {{ $t('common.confirm') }}
           </NButton>
         </NSpace>

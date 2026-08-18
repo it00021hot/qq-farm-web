@@ -354,6 +354,21 @@ export function fetchFarmWxLoginCode(taskId: string) {
   });
 }
 
+export function fetchCreateFarmWxQuickLoginSession() {
+  return request<Api.Farm.WxQuickLoginTask>({
+    url: '/farm/wx-login/quick-tasks',
+    method: 'post'
+  });
+}
+
+export function fetchConfirmFarmWxQuickLogin(sessionId: string, redirectUrl: string) {
+  return request<Api.Farm.WxLoginCodeResult>({
+    url: `/farm/wx-login/quick-tasks/${sessionId}/confirm`,
+    method: 'post',
+    data: { redirect_url: redirectUrl }
+  });
+}
+
 /** ========== Commerce ========== */
 export function fetchGetFarmGameMall(params: { accountId: number; slotType?: number; subSlotType?: number }) {
   return request<Api.Farm.MallCatalog>({

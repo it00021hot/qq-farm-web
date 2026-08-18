@@ -684,6 +684,16 @@ declare namespace Api {
       err_msg: string;
     };
 
+    type WxQuickLoginTask = {
+      session_id: string;
+      appid: string;
+      scope: string;
+      redirect_uri: string;
+      state: string;
+      ports: number[];
+      expires_at: number;
+    };
+
     type CommerceItem = {
       id: number;
       count: number;
