@@ -32,6 +32,7 @@ declare namespace Api {
       status: EnableStatus;
       wxOpenid?: string;
       wxAuthorized?: boolean;
+      wxRescanRecommended?: boolean;
       createdAt: number;
       updatedAt: number;
     };

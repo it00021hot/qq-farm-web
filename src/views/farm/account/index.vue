@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import { onMounted, ref } from 'vue';
 import dayjs from 'dayjs';
-import { NButton, NPopconfirm, NTag } from 'naive-ui';
+import { NButton, NPopconfirm, NTag, NTooltip } from 'naive-ui';
 import {
   farmAuthStatusRecord,
   farmPlatformRecord,
@@ -38,8 +38,11 @@ const searchParams = ref<Api.Farm.AccountSearchParams>({
   authStatus: null
 });
 
-function authStatusOf(row: Api.Farm.Account): 'authorized' | 'unauthorized' {
-  return row.wxAuthorized ? 'authorized' : 'unauthorized';
+function authStatusOf(row: Api.Farm.Account): 'authorized' | 'unauthorized' | 'rescanRecommended' {
+  if (!row.wxAuthorized) {
+    return 'unauthorized';
+  }
+  return row.wxRescanRecommended ? 'rescanRecommended' : 'authorized';
 }
 
 const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagination } = useNaivePaginatedTable({
@@ -96,11 +99,23 @@ const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagi
       align: 'center',
       render: row => {
         const status = authStatusOf(row);
-        const tagMap: Record<'authorized' | 'unauthorized', NaiveUI.ThemeColor> = {
+        const tagMap: Record<'authorized' | 'unauthorized' | 'rescanRecommended', NaiveUI.ThemeColor> = {
           authorized: 'success',
-          unauthorized: 'warning'
+          unauthorized: 'warning',
+          rescanRecommended: 'warning'
         };
-        return <NTag type={tagMap[status]}>{$t(farmAuthStatusRecord[status])}</NTag>;
+        const tag = <NTag type={tagMap[status]}>{$t(farmAuthStatusRecord[status])}</NTag>;
+        if (status !== 'rescanRecommended') {
+          return tag;
+        }
+        return (
+          <NTooltip>
+            {{
+              default: () => $t('page.farm.common.authStatus.rescanHint'),
+              trigger: () => tag
+            }}
+          </NTooltip>
+        );
       }
     },
     {
