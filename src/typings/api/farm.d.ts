@@ -695,6 +695,17 @@ declare namespace Api {
       expires_at: number;
     };
 
+    type WxQuickDetectResult = {
+      port: number;
+      authorize_uuid: string;
+      nickname?: string;
+      headimgurl?: string;
+    };
+
+    type WxQuickAuthorizeResult = {
+      redirect_url: string;
+    };
+
     type CommerceItem = {
       id: number;
       count: number;

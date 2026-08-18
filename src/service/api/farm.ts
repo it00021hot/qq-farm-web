@@ -361,6 +361,24 @@ export function fetchCreateFarmWxQuickLoginSession() {
   });
 }
 
+export function fetchDetectFarmWxQuickLogin(sessionId: string) {
+  return request<Api.Farm.WxQuickDetectResult>({
+    url: `/farm/wx-login/quick-tasks/${sessionId}/detect`,
+    method: 'post'
+  });
+}
+
+export function fetchAuthorizeFarmWxQuickLogin(
+  sessionId: string,
+  data: { port: number; authorize_uuid: string; x: number; y: number }
+) {
+  return request<Api.Farm.WxQuickAuthorizeResult>({
+    url: `/farm/wx-login/quick-tasks/${sessionId}/authorize`,
+    method: 'post',
+    data
+  });
+}
+
 export function fetchConfirmFarmWxQuickLogin(sessionId: string, redirectUrl: string) {
   return request<Api.Farm.WxLoginCodeResult>({
     url: `/farm/wx-login/quick-tasks/${sessionId}/confirm`,
