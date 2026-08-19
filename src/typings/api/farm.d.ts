@@ -228,7 +228,9 @@ declare namespace Api {
       [key: string]: unknown;
     };
 
-    type FriendSearchParams = CommonType.RecordNullable<CommonSearchParams & { accountId?: number; keyword?: string }>;
+    type FriendSearchParams = CommonType.RecordNullable<
+      CommonSearchParams & { accountId?: number; keyword?: string; force?: boolean }
+    >;
 
     type FriendList = Common.PaginatingQueryRecord<Friend>;
 
