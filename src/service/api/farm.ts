@@ -233,6 +233,19 @@ export function fetchSettleFarmActivityGreenPlumBrew(data: Api.Farm.ActivityClai
   return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/green-plum/brew/settle', method: 'post', data });
 }
 
+export function fetchClaimFarmActivityQixiBridge(data: Api.Farm.ActivityClaimParams) {
+  return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/qixi/bridge/claim', method: 'post', data });
+}
+
+export function fetchGiftFarmActivityQixiSachet(data: Api.Farm.ActivityClaimParams) {
+  const count = Math.trunc(Number((data as any).sachetCount ?? data.count ?? 0));
+  return request<Api.Farm.ActivitySnapshot>({
+    url: '/farm/activity/qixi/gift',
+    method: 'post',
+    data: { ...data, count, sachetCount: count }
+  });
+}
+
 export function fetchClaimFarmActivityTask(data: Api.Farm.ActivityClaimParams) {
   return request({ url: '/farm/activity/task/claim', method: 'post', data });
 }

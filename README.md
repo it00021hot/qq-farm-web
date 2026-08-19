@@ -1,5 +1,9 @@
 # QQ 农场 · 前端（qq-farm-web）
 
+> 维护状态：该 Go 版本管理端已停止持续维护，仅保留历史实现。
+>
+> 当前维护中的版本请见 Rust 仓库：[`it00021hot/qq-farm-rust`](https://github.com/it00021hot/qq-farm-rust)
+
 QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/背包/任务、好友、活动中心、商城与数据分析。
 
 基于 [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin)（Vue 3 + Vite + TypeScript + Naive UI + UnoCSS）改造；业务页面在 `src/views/farm`。

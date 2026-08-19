@@ -20,8 +20,7 @@ import {
   fetchGetFarmFriendInteractRecords,
   fetchGetFarmFriendLands,
   fetchGetFarmFriendList,
-  fetchModifyFarmAutomation,
-  fetchSyncFarmFriends
+  fetchModifyFarmAutomation
 } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
@@ -50,7 +49,6 @@ const message = useMessage();
 
 const activeTab = ref<TabKey>('friends');
 const loading = ref(false);
-const syncing = ref(false);
 const interactLoading = ref(false);
 const interactError = ref('');
 const opLoadingKey = ref<string | null>(null);
@@ -241,26 +239,6 @@ async function loadInteractRecords() {
     interactRecords.value = data || [];
   } finally {
     interactLoading.value = false;
-  }
-}
-
-async function syncFriends() {
-  if (!farmAccountStore.currentAccountId) return;
-  syncing.value = true;
-  try {
-    const { error, data } = await fetchSyncFarmFriends(farmAccountStore.currentAccountId);
-    if (error) {
-      message.error(error.message || $t('page.farm.friends.syncFailed'));
-      return;
-    }
-    message.success(
-      data?.count != null
-        ? $t('page.farm.friends.syncSuccessWithCount', { count: data.count })
-        : $t('page.farm.friends.syncSuccess')
-    );
-    await loadFriends();
-  } finally {
-    syncing.value = false;
   }
 }
 
@@ -633,8 +611,18 @@ onUnmounted(() => {
     <NTabs v-else v-model:value="activeTab" type="line" animated>
       <NTabPane name="friends" :tab="$t('page.farm.friends.tabFriends')">
         <NCard :bordered="false" size="small" class="card-wrapper">
-          <template #header-extra>
-            <NSpace>
+          <div class="mb-12px flex flex-wrap items-center justify-between gap-12px">
+            <NInput
+              v-model:value="searchKeyword"
+              clearable
+              size="small"
+              class="max-w-320px"
+              :placeholder="$t('page.farm.friends.searchPlaceholder')"
+            />
+            <NSpace align="center">
+              <span class="text-12px text-gray-500">
+                {{ $t('page.farm.friends.friendCount', { shown: normalFriends.length, total: friends.length }) }}
+              </span>
               <NButton
                 v-if="hasAuth('farm-friend:op')"
                 size="small"
@@ -646,32 +634,10 @@ onUnmounted(() => {
               >
                 {{ $t('page.farm.friends.stealAll') }}
               </NButton>
-              <NButton
-                v-if="hasAuth('farm-friend:sync')"
-                size="small"
-                type="primary"
-                :loading="syncing"
-                @click="syncFriends"
-              >
-                {{ $t('page.farm.friends.sync') }}
-              </NButton>
               <NButton size="small" :loading="loading" @click="refreshFriendList">
                 {{ $t('page.farm.friends.refreshList') }}
               </NButton>
             </NSpace>
-          </template>
-
-          <div class="mb-12px flex flex-wrap items-center justify-between gap-12px">
-            <NInput
-              v-model:value="searchKeyword"
-              clearable
-              size="small"
-              class="max-w-320px"
-              :placeholder="$t('page.farm.friends.searchPlaceholder')"
-            />
-            <span class="text-12px text-gray-500">
-              {{ $t('page.farm.friends.friendCount', { shown: normalFriends.length, total: friends.length }) }}
-            </span>
           </div>
 
           <NSpin :show="loading">
@@ -903,22 +869,21 @@ onUnmounted(() => {
 
       <NTabPane name="visitors" :tab="$t('page.farm.friends.tabVisitors')">
         <NCard :bordered="false" size="small" class="card-wrapper">
-          <template #header-extra>
+          <div class="mb-12px flex flex-wrap items-center justify-between gap-12px">
+            <div class="flex flex-wrap gap-8px">
+              <NButton
+                v-for="item in interactFilters"
+                :key="item.key"
+                size="tiny"
+                :type="interactFilter === item.key ? 'primary' : 'default'"
+                secondary
+                @click="interactFilter = item.key"
+              >
+                {{ $t(item.labelKey) }}
+              </NButton>
+            </div>
             <NButton size="small" :loading="interactLoading" @click="loadInteractRecords">
               {{ $t('common.refresh') }}
-            </NButton>
-          </template>
-
-          <div class="mb-12px flex flex-wrap gap-8px">
-            <NButton
-              v-for="item in interactFilters"
-              :key="item.key"
-              size="tiny"
-              :type="interactFilter === item.key ? 'primary' : 'default'"
-              secondary
-              @click="interactFilter = item.key"
-            >
-              {{ $t(item.labelKey) }}
             </NButton>
           </div>
 

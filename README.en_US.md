@@ -1,5 +1,9 @@
 # QQ Farm · Frontend (qq-farm-web)
 
+> Maintenance status: this Go-based frontend is no longer actively maintained and is kept only as a historical implementation.
+>
+> For the actively maintained version, see the Rust repository: [`it00021hot/qq-farm-rust`](https://github.com/it00021hot/qq-farm-rust)
+
 Admin UI for the QQ Farm assistant: multi-account control, automation settings, personal farm / bag / tasks, friends, activity center, mall, and analytics.
 
 Built on [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin) (Vue 3 + Vite + TypeScript + Naive UI + UnoCSS). Farm features live under `src/views/farm`.
