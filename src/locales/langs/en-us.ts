@@ -431,16 +431,13 @@ const local: App.I18n.Schema = {
         bagCatTool: 'Tool',
         bagCatOther: 'Other',
         use: 'Use',
-        useConfirm: 'Use all of this item?',
         useSuccess: 'Used successfully',
         useFailed: 'Use failed',
         sell: 'Sell',
-        sellConfirm: 'Sell this item?',
         sellSuccess: 'Sold successfully',
         sellFailed: 'Sell failed',
         sellNotFound: 'No sellable items found',
         batchSell: 'Batch Sell',
-        batchSellConfirm: 'Sell {count} selected item type(s)?',
         batchSellSuccess: 'Batch sell succeeded',
         batchSellEmpty: 'Select sellable items first',
         dailyGiftsTitle: 'Daily Gifts & Tasks',
@@ -465,13 +462,6 @@ const local: App.I18n.Schema = {
           clear: 'Maintain',
           plant: 'Plant',
           upgrade: 'Upgrade Lands'
-        },
-        confirm: {
-          all: 'Run all farm operations?',
-          harvest: 'Harvest all mature crops?',
-          clear: 'Weed, de-bug, and water all lands?',
-          plant: 'Plant on all empty lands?',
-          upgrade: 'Upgrade all upgradable lands?'
         }
       },
       account: {
@@ -815,9 +805,10 @@ const local: App.I18n.Schema = {
         fertilizerBuyOrganicThreshold: 'Trigger Threshold (h)',
         fertilizerBuyNormalCount: 'Buy Count',
         fertilizerBuyNormalThreshold: 'Trigger Threshold (h)',
-        fertilizerBuyCheckInterval: 'Check Interval (min)',
         fertilizerBuyHint:
-          'The system checks fertilizer container remaining on the interval and buys when below threshold. Saving triggers an immediate check. When both buys are on, organic is preferred.',
+          'Organic and normal share one mechanism: remaining is checked right after fertilizing and topped up on the spot when below threshold. Saving triggers an immediate check. When both buys are on, organic is preferred.',
+        fertilizerBothHint:
+          'Both mode: apply normal fertilizer once on every eligible land, then loop organic fertilizer to ripen immature crops; runs at the end of a farm cycle.',
         fertilizerMultiSeason: 'Multi-season Refertilize',
         fertilizerLandTypes: 'Fertilizer Scope',
         fertilizerLandTypesHint: 'Fertilizer runs only on lands matching the selected types.',

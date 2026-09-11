@@ -64,12 +64,13 @@ const strategySaving = ref(false);
 const automationSaving = ref(false);
 const activeTab = ref<'strategy' | 'automation'>('strategy');
 
-const plantingStrategy = ref('preferred');
+// 新账号本地默认对齐 rust default_account_config（4fe322f：背包优先、偷菜 60-90、安静时段 01:00-08:30）
+const plantingStrategy = ref('bag_priority');
 const preferredSeedId = ref<number | null>(0);
-const bagSeedPriority = ref<number[]>([]);
-const bagSeedFallbackStrategy = ref('level');
-const plantOrderRandom = ref(false);
-const plantDelaySeconds = ref(0);
+const bagSeedPriority = ref<number[]>([29003, 20129, 21380, 20108, 26032]);
+const bagSeedFallbackStrategy = ref('preferred');
+const plantOrderRandom = ref(true);
+const plantDelaySeconds = ref(2);
 const stealDelaySeconds = ref(1);
 const plantBlacklist = ref<number[]>([]);
 const intervals = reactive<Api.Farm.IntervalsConfig>({
@@ -77,21 +78,20 @@ const intervals = reactive<Api.Farm.IntervalsConfig>({
   farmMax: 25,
   helpMin: 20,
   helpMax: 25,
-  stealMin: 10,
-  stealMax: 15
+  stealMin: 60,
+  stealMax: 90
 });
 const quietHours = reactive<Api.Farm.QuietHoursConfig>({
-  enabled: false,
+  enabled: true,
   start: '01:00',
-  end: '07:30'
+  end: '08:30'
 });
 
 const fertilizerBuy = reactive({
   organicCount: 1,
   organicThresholdHours: 10,
   normalCount: 1,
-  normalThresholdHours: 10,
-  checkIntervalMinutes: 60
+  normalThresholdHours: 10
 });
 
 /** Bot AutomationConfig keys only (qq-farm-bot Settings) */
@@ -135,6 +135,7 @@ let previewRequestRevision = 0;
 const fertilizerOptions = computed(() => translateStringOptions(farmFertilizerModeOptions));
 const fertilizerLandTypeOptions = computed(() => translateStringOptions(farmFertilizerLandTypeOptions));
 const showSmartSeconds = computed(() => automation.fertilizer === 'smart');
+const showBothHint = computed(() => automation.fertilizer === 'both');
 const accountRunning = computed(() => farmAccountStore.currentAccount?.runStatus === 1);
 
 const strategyOptions = computed(() => [
@@ -495,7 +496,6 @@ function applyDetail(data: Api.Farm.AccountAutomationDetail) {
   fertilizerBuy.organicThresholdHours = data.fertilizerBuyOrganicThresholdHours ?? 10;
   fertilizerBuy.normalCount = data.fertilizerBuyNormalCount ?? 1;
   fertilizerBuy.normalThresholdHours = data.fertilizerBuyNormalThresholdHours ?? 10;
-  fertilizerBuy.checkIntervalMinutes = data.fertilizerBuyCheckIntervalMinutes ?? 60;
 }
 
 async function loadConfig() {
@@ -580,8 +580,7 @@ async function handleSaveAutomation() {
       fertilizerBuyOrganicCount: fertilizerBuy.organicCount,
       fertilizerBuyOrganicThresholdHours: fertilizerBuy.organicThresholdHours,
       fertilizerBuyNormalCount: fertilizerBuy.normalCount,
-      fertilizerBuyNormalThresholdHours: fertilizerBuy.normalThresholdHours,
-      fertilizerBuyCheckIntervalMinutes: fertilizerBuy.checkIntervalMinutes
+      fertilizerBuyNormalThresholdHours: fertilizerBuy.normalThresholdHours
     });
     if (!error) {
       window.$message?.success($t('page.farm.settings.saveAutomationSuccess'));
@@ -945,16 +944,6 @@ onMounted(async () => {
                   <NInputNumber v-model:value="fertilizerBuy.normalThresholdHours" class="w-full" :min="1" :max="990" />
                 </NFormItem>
               </div>
-              <div class="grid gap-12px sm:grid-cols-2 md:grid-cols-3">
-                <NFormItem :label="$t('page.farm.settings.fertilizerBuyCheckInterval')">
-                  <NInputNumber
-                    v-model:value="fertilizerBuy.checkIntervalMinutes"
-                    class="w-full"
-                    :min="1"
-                    :max="1440"
-                  />
-                </NFormItem>
-              </div>
               <NText depth="3" class="text-12px">{{ $t('page.farm.settings.fertilizerBuyHint') }}</NText>
             </NForm>
           </template>
@@ -996,6 +985,9 @@ onMounted(async () => {
             <div class="fertilizer-field">
               <div class="fertilizer-label">{{ $t('page.farm.settings.fertilizer') }}</div>
               <NSelect v-model:value="automation.fertilizer" class="max-w-320px" :options="fertilizerOptions" />
+              <NText v-if="showBothHint" depth="3" class="mt-8px text-12px">
+                {{ $t('page.farm.settings.fertilizerBothHint') }}
+              </NText>
             </div>
             <div class="auto-switch-item fertilizer-field">
               <NSwitch v-model:value="automation.fertilizer_multi_season" />

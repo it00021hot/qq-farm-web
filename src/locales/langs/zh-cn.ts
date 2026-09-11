@@ -427,16 +427,13 @@ const local: App.I18n.Schema = {
         bagCatTool: '道具',
         bagCatOther: '其他',
         use: '使用',
-        useConfirm: '确认使用该物品全部数量吗？',
         useSuccess: '使用成功',
         useFailed: '使用失败',
         sell: '出售',
-        sellConfirm: '确认出售该物品吗？',
         sellSuccess: '出售成功',
         sellFailed: '出售失败',
         sellNotFound: '未找到可出售物品',
         batchSell: '批量出售',
-        batchSellConfirm: '确认出售选中的 {count} 种物品吗？',
         batchSellSuccess: '批量出售成功',
         batchSellEmpty: '请先勾选可出售物品',
         dailyGiftsTitle: '每日礼包 & 任务',
@@ -461,13 +458,6 @@ const local: App.I18n.Schema = {
           clear: '一键务农',
           plant: '种植',
           upgrade: '升级土地'
-        },
-        confirm: {
-          all: '确定执行一键全收吗？',
-          harvest: '确定收获所有成熟作物吗？',
-          clear: '确定一键务农吗？(除草+除虫+浇水)',
-          plant: '确定一键种植吗？',
-          upgrade: '确定升级所有可升级的土地吗？'
         }
       },
       account: {
@@ -811,9 +801,9 @@ const local: App.I18n.Schema = {
         fertilizerBuyOrganicThreshold: '触发阈值 (小时)',
         fertilizerBuyNormalCount: '购买数量',
         fertilizerBuyNormalThreshold: '触发阈值 (小时)',
-        fertilizerBuyCheckInterval: '检测间隔 (分钟)',
         fertilizerBuyHint:
-          '系统会按照设定的检测间隔定时检测化肥容器剩余量，当低于触发阈值时自动购买。保存设置后会立即检测一次。同时开启两种化肥购买时，优先购买有机化肥。',
+          '有机/无机同一套机制：施肥后立即检测余量，低于触发阈值当场补购。保存设置后会立即检测一次。双开时优先买有机化肥。',
+        fertilizerBothHint: 'Both 模式：全场能施无机肥的地各施一次，未成熟地块循环施有机肥催熟；由巡田末尾统一执行。',
         fertilizerMultiSeason: '多季补肥',
         fertilizerLandTypes: '施肥范围',
         fertilizerLandTypesHint: '施肥前会优先按土地类型过滤，仅对命中范围的地块执行施肥策略。',

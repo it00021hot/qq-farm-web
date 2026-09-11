@@ -667,16 +667,13 @@ declare namespace App {
             bagCatTool: string;
             bagCatOther: string;
             use: string;
-            useConfirm: string;
             useSuccess: string;
             useFailed: string;
             sell: string;
-            sellConfirm: string;
             sellSuccess: string;
             sellFailed: string;
             sellNotFound: string;
             batchSell: string;
-            batchSellConfirm: string;
             batchSellSuccess: string;
             batchSellEmpty: string;
             dailyGiftsTitle: string;
@@ -696,13 +693,6 @@ declare namespace App {
             operateSuccess: string;
             operateFailed: string;
             op: {
-              all: string;
-              harvest: string;
-              clear: string;
-              plant: string;
-              upgrade: string;
-            };
-            confirm: {
               all: string;
               harvest: string;
               clear: string;
@@ -1049,8 +1039,8 @@ declare namespace App {
             fertilizerBuyOrganicThreshold: string;
             fertilizerBuyNormalCount: string;
             fertilizerBuyNormalThreshold: string;
-            fertilizerBuyCheckInterval: string;
             fertilizerBuyHint: string;
+            fertilizerBothHint: string;
             fertilizerMultiSeason: string;
             fertilizerLandTypes: string;
             fertilizerLandTypesHint: string;

@@ -129,6 +129,23 @@ function formatBucketTime(item?: Api.Farm.BagItem) {
   return `${(Number(item.count || 0) / 3600).toFixed(1)}h`;
 }
 
+// 化肥桶推送刷新：施肥/购买日志到达时防抖拉一次背包，不用等 30s 轮询或手动刷
+let bagRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleBagRefresh() {
+  if (bagRefreshTimer) return;
+  bagRefreshTimer = setTimeout(() => {
+    bagRefreshTimer = null;
+    if (isOnline.value) void loadBag();
+  }, 2000);
+}
+
+function maybeScheduleBagRefresh(formatted: { tag: string; message: string }) {
+  // 施肥消耗 / 商城补货都会改背包：防抖刷新化肥桶余量（对齐 rust 20260911）
+  if (formatted.tag === '施肥' || formatted.tag === '商城' || formatted.message.includes('化肥')) {
+    scheduleBagRefresh();
+  }
+}
+
 const fertilizerNormal = computed(() => bagItemById(1011));
 const fertilizerOrganic = computed(() => bagItemById(1012));
 const collectionNormal = computed(() => bagItemById(3001));
@@ -518,6 +535,7 @@ const { connected, connect } = useFarmWs({
       if (current && accountId && accountId !== current) return;
       const formatted = formatEventMessage(type, payload);
       pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
+      maybeScheduleBagRefresh(formatted);
       return;
     }
 
@@ -525,6 +543,7 @@ const { connected, connect } = useFarmWs({
       if (current && accountId && accountId !== current) return;
       const formatted = formatEventMessage(type, payload);
       pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
+      maybeScheduleBagRefresh(formatted);
       // Prefer WS status pushes; only HTTP-refetch when socket is down.
       if ((type === 'farm_tick' || type === 'farm_operation') && !connected.value) {
         void loadStatus({ silent: true, withExtras: false });
@@ -567,6 +586,10 @@ onMounted(async () => {
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer);
   if (bagTimer) clearInterval(bagTimer);
+  if (bagRefreshTimer) {
+    clearTimeout(bagRefreshTimer);
+    bagRefreshTimer = null;
+  }
 });
 </script>
 
