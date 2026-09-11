@@ -472,6 +472,7 @@ declare namespace Api {
       greenPlum?: Record<string, unknown>;
       qingMei?: Record<string, unknown>;
       qixi?: Record<string, unknown>;
+      charity?: Record<string, unknown>;
       activities?: Array<Record<string, unknown>>;
       capabilities?: Record<string, boolean>;
       actions?: Record<string, ActivityAction>;

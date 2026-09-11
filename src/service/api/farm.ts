@@ -201,6 +201,182 @@ export function fetchGetFarmActivitySnapshot(accountId: number) {
   });
 }
 
+/** ========== 活动中心：公益小红花 / 雨落成诗 / 萌宠成长日记（对齐 rust 桌面端 API 面） ========== */
+export function fetchGetFarmActivityCharity(accountId: number) {
+  return request<any>({
+    url: '/farm/activity/charity',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
+export function fetchClaimFarmActivityCharitySeeds(data: { accountId: number }) {
+  return request<any>({
+    url: '/farm/activity/charity/operate',
+    method: 'post',
+    data: { accountId: data.accountId, action: 'claimSeeds' }
+  });
+}
+
+export function fetchDonateFarmActivityCharityLove(data: { accountId: number }) {
+  return request<any>({
+    url: '/farm/activity/charity/operate',
+    method: 'post',
+    data: { accountId: data.accountId, action: 'donateLove' }
+  });
+}
+
+export function fetchClaimFarmActivityCharityDailyGift(data: { accountId: number }) {
+  return request<any>({
+    url: '/farm/activity/charity/operate',
+    method: 'post',
+    data: { accountId: data.accountId, action: 'claimDailyGift' }
+  });
+}
+
+export function fetchClaimFarmActivityCharityProgressReward(data: { accountId: number; target: string }) {
+  return request<any>({
+    url: '/farm/activity/charity/operate',
+    method: 'post',
+    data: { accountId: data.accountId, action: 'progressReward', itemId: data.target }
+  });
+}
+
+export function fetchGetWeatherSnapshot(accountId: number) {
+  return request<any>({
+    url: '/farm/activity/weather',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
+export function fetchScanWeatherFriends(accountId: number, friendGids: string[]) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'scan', gids: friendGids.map(g => String(g)) }
+  });
+}
+
+export function fetchExchangeWeatherCollector(accountId: number) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'exchangeCollector' }
+  });
+}
+
+export function fetchCollectWeather(accountId: number, friendGid: string) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'collect', friendGid: String(friendGid) }
+  });
+}
+
+export function fetchSummonWeather(accountId: number) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'summon' }
+  });
+}
+
+export function fetchWeatherMischiefFrog(accountId: number, friendGid: string) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'frog', friendGid: String(friendGid) }
+  });
+}
+
+export function fetchWeatherMischiefCloud(accountId: number, friendGid: string, landId?: string) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: {
+      accountId,
+      action: 'cloud',
+      friendGid: String(friendGid),
+      itemId: landId != null && String(landId) !== '' ? String(landId) : undefined
+    }
+  });
+}
+
+export function fetchAdvanceWeatherResearch(accountId: number, nodeId: string) {
+  return request<any>({
+    url: '/farm/activity/weather/operate',
+    method: 'post',
+    data: { accountId, action: 'advanceResearch', itemId: String(nodeId) }
+  });
+}
+
+// 雨落成诗好友基础列表（不进好友农场）：复用好友分页列表并映射为天气视图行。
+export async function fetchGetWeatherFriends(accountId: number) {
+  const res = await fetchGetFarmFriendList({ current: 1, size: 500, accountId });
+  const records = (res.data?.records || []) as Api.Farm.Friend[];
+  const rows = records.map(friend => ({
+    gid: String(friend.gid ?? ''),
+    name: friend.nickname,
+    avatarUrl: friend.avatar,
+    level: friend.level
+  }));
+  return { error: res.error, data: rows.filter(row => Number(row.gid) > 0) } as {
+    error: typeof res.error;
+    data: { gid: string; name?: string; avatarUrl?: string; level?: number }[];
+  };
+}
+
+export function fetchGetFarmActivityPetDiary(accountId: number) {
+  return request<any>({
+    url: '/farm/activity/pet-diary',
+    method: 'get',
+    params: { accountId }
+  });
+}
+
+// PetDiaryOperateRequest 字段映射：order/charmId/goodsId/nodeId→itemId，gid→friendGid，
+// treasureId/challengeId→targetId（对齐 Go PetDiaryOperate 的解析）。
+export function fetchOperateFarmActivityPetDiary(accountId: number, action: string, params: Record<string, unknown>) {
+  const pick = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = params[key];
+      if (value !== undefined && value !== null && value !== '') return String(value);
+    }
+    return undefined;
+  };
+  const count = Number(params.count);
+  return request<any>({
+    url: '/farm/activity/pet-diary/operate',
+    method: 'post',
+    data: {
+      accountId,
+      action,
+      itemId: pick('order', 'charmId', 'goodsId', 'nodeId'),
+      friendGid: pick('gid', 'friendGid'),
+      targetId: pick('treasureId', 'challengeId'),
+      count: Number.isFinite(count) && count > 0 ? count : undefined,
+      skip: params.skip === true
+    }
+  });
+}
+
+export function fetchGetFarmActivityPetDiaryRecords(accountId: number, kind: 'interact' | 'plunder') {
+  return request<any[]>({
+    url: '/farm/activity/pet-diary/records',
+    method: 'get',
+    params: { accountId, kind }
+  });
+}
+
+export function fetchGetFarmActivityPetDiaryFriend(accountId: number, gid: string) {
+  return request<any>({
+    url: '/farm/activity/pet-diary/friend',
+    method: 'get',
+    params: { accountId, gid }
+  });
+}
+
 export function fetchClaimFarmActivityPass(data: Api.Farm.ActivityClaimParams) {
   return request<Api.Farm.ActivitySnapshot>({ url: '/farm/activity/pass/claim', method: 'post', data });
 }

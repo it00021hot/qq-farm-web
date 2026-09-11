@@ -2,14 +2,19 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { NButton, NCard, NEmpty, NInputNumber, NModal, NProgress, NSpace, NSpin, NTag, useMessage } from 'naive-ui';
 import {
+  fetchClaimFarmActivityCharityDailyGift,
+  fetchClaimFarmActivityCharityProgressReward,
+  fetchClaimFarmActivityCharitySeeds,
   fetchClaimFarmActivityGreenPlum,
   fetchClaimFarmActivityPass,
   fetchClaimFarmActivityQixiBridge,
   fetchClaimFarmActivitySolarTerm,
   fetchContinueFarmActivityGreenPlumBrew,
+  fetchDonateFarmActivityCharityLove,
   fetchExchangeFarmActivityShop,
   fetchGetFarmActivitySnapshot,
   fetchGetFarmFriendList,
+  fetchGetWeatherSnapshot,
   fetchGiftFarmActivityQixiSachet,
   fetchLightFarmActivityConstellation,
   fetchSettleFarmActivityGreenPlumBrew,
@@ -19,14 +24,17 @@ import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
 import { resolveCatalogImage } from '@/views/farm/game-config/shared';
 import { $t } from '@/locales';
+import CharityView, { type CharityActivity } from './charity-view.vue';
+import PetDiaryView from './pet-diary-view.vue';
 import QixiView from './qixi-view.vue';
+import WeatherView from './weather-view.vue';
 
 defineOptions({
   name: 'FarmActivity'
 });
 
 type ActivityTab = 'travel' | 'constellation' | 'shop' | 'solar';
-type GameplayKey = 'stellar' | 'qixi' | 'greenPlum';
+type GameplayKey = 'stellar' | 'qixi' | 'greenPlum' | 'weather' | 'charity' | 'pet';
 type ActivityStatus = 'active' | 'upcoming' | 'ended';
 type ActivityDirectoryItem = {
   id?: string;
@@ -198,8 +206,12 @@ const solarTerms = ref<Record<string, unknown>>({});
 const greenPlum = ref<GreenPlum>({});
 const qixi = ref<Qixi>({});
 const directory = ref<ActivityDirectoryItem[]>([]);
-const qixiFriends = ref<Api.Farm.Friend[]>([]);
-const qixiFriendsLoading = ref(false);
+// 雨落成诗活动窗口（目录兜底入口的状态判定）
+const weatherActivity = ref<{ startTime?: number | string; endTime?: number | string } | null>(null);
+const charity = ref<CharityActivity>({});
+// 好友列表为七夕送礼与萌宠夺宝下拉共享：切到对应玩法时懒加载，刷新按钮强制拉取
+const activityFriends = ref<Api.Farm.Friend[]>([]);
+const activityFriendsLoading = ref(false);
 const capabilities = ref<Record<string, boolean>>({});
 const actions = ref<Record<string, Api.Farm.ActivityAction>>({});
 const clockNow = ref(Date.now());
@@ -286,6 +298,8 @@ const greenPlumActive = computed(() => greenPlum.value.known === true && greenPl
 const greenPlumEnd = computed(() => Number(greenPlum.value.endTime || 0) || undefined);
 const qixiKnown = computed(() => Boolean(qixi.value.name || qixi.value.groupId));
 const qixiEnd = computed(() => Number(qixi.value.endTime || 0) || undefined);
+const charityKnown = computed(() => Boolean(charity.value.name || charity.value.activityId));
+const charityEnd = computed(() => Number(charity.value.endTime || 0) || undefined);
 const greenPlumBalance = computed(() => {
   if (greenPlum.value.balanceKnown === false) return '--';
   return greenPlum.value.balance ?? '0';
@@ -364,10 +378,25 @@ function resolveGameplay(activity: ActivityDirectoryItem): GameplayKey | null {
       ? 'qixi'
       : activity.detailTarget === 'greenPlum'
         ? 'greenPlum'
-        : activity.detailTarget
-          ? 'stellar'
-          : null);
-  if (key === 'qixi' || key === 'stellar' || key === 'greenPlum') return key;
+        : activity.detailTarget === 'weather'
+          ? 'weather'
+          : activity.detailTarget === 'charity'
+            ? 'charity'
+            : activity.detailTarget === 'pet'
+              ? 'pet'
+              : activity.detailTarget
+                ? 'stellar'
+                : null);
+  if (
+    key === 'qixi' ||
+    key === 'stellar' ||
+    key === 'greenPlum' ||
+    key === 'weather' ||
+    key === 'charity' ||
+    key === 'pet'
+  ) {
+    return key;
+  }
   return null;
 }
 
@@ -412,6 +441,29 @@ const displayActivities = computed(() => {
       detailTarget: 'qixi'
     });
   }
+  // 雨落成诗（天气活动，固定兜底入口；时间窗用 weather_snapshot 的真实值，
+  // 活动结束后目录显示「已结束」而不是无窗口时的「进行中」）
+  if (!entries.some(item => resolveGameplay(item) === 'weather')) {
+    entries.push({
+      id: '2026070300',
+      name: $t('page.farm.activity.tabWeather'),
+      startTime: Number(weatherActivity.value?.startTime || 0),
+      endTime: Number(weatherActivity.value?.endTime || 0),
+      gameplayKey: 'weather',
+      detailTarget: 'weather'
+    });
+  }
+  // 公益小红花（快照里有状态但目录未命中时兜底展示）
+  if (charityKnown.value && !entries.some(item => resolveGameplay(item) === 'charity')) {
+    entries.push({
+      id: String(charity.value.groupId || charity.value.activityId || 'charity'),
+      name: String(charity.value.name || charity.value.title || $t('page.farm.activity.tabCharity')),
+      startTime: Number(charity.value.startTime || 0),
+      endTime: Number(charity.value.endTime || 0),
+      gameplayKey: 'charity',
+      detailTarget: 'charity'
+    });
+  }
   const rank: Record<ActivityStatus, number> = { active: 0, upcoming: 1, ended: 2 };
   return entries.sort((left, right) => {
     const leftStatus = activityStatus(left);
@@ -425,8 +477,14 @@ const pageTitle = computed(() => {
   if (selectedGameplay.value === 'qixi') {
     return String(qixi.value.name || qixi.value.title || $t('page.farm.activity.tabQixi'));
   }
+  if (selectedGameplay.value === 'charity') {
+    return String(charity.value.name || charity.value.title || $t('page.farm.activity.tabCharity'));
+  }
   if (selectedGameplay.value === 'greenPlum') {
     return String(greenPlum.value.name || $t('page.farm.activity.tabGreenPlum'));
+  }
+  if (selectedGameplay.value === 'weather') {
+    return $t('page.farm.activity.tabWeather');
   }
   if (activeTab.value === 'shop') {
     return String(shop.value.title || shop.value.name || $t('page.farm.activity.tabShop'));
@@ -450,7 +508,9 @@ const pageTitle = computed(() => {
 const remainingText = computed(() => {
   let endTime: number | undefined;
   if (selectedGameplay.value === 'qixi') endTime = qixiEnd.value;
+  else if (selectedGameplay.value === 'charity') endTime = charityEnd.value;
   else if (selectedGameplay.value === 'greenPlum') endTime = greenPlumEnd.value;
+  else if (selectedGameplay.value === 'weather') endTime = undefined;
   else if (activeTab.value === 'shop') endTime = Number(shop.value.endTime || 0) || undefined;
   else if (activeTab.value === 'constellation') {
     endTime = Number(constellation.value.endTime || season.value.endTime || 0) || undefined;
@@ -606,7 +666,7 @@ function openActivity(activity: ActivityDirectoryItem) {
     }
   }
   selectedGameplay.value = gameplay;
-  if (gameplay === 'qixi') void loadQixiFriends();
+  if (gameplay === 'qixi' || gameplay === 'pet') void loadActivityFriends();
 }
 
 function goBackToList() {
@@ -621,6 +681,7 @@ function applySnapshot(data: Api.Farm.ActivitySnapshot) {
   solarTerms.value = (snap.solarTerms as Record<string, unknown>) || {};
   greenPlum.value = (snap.greenPlum as GreenPlum) || (snap.qingMei as GreenPlum) || {};
   qixi.value = (snap.qixi as Qixi) || {};
+  charity.value = (snap.charity as CharityActivity) || {};
   directory.value = Array.isArray(snap.activities) ? (snap.activities as ActivityDirectoryItem[]) : [];
   capabilities.value = snap.capabilities || data.capabilities || {};
   actions.value = snap.actions || data.actions || {};
@@ -643,6 +704,7 @@ async function loadActivities() {
     solarTerms.value = {};
     greenPlum.value = {};
     qixi.value = {};
+    charity.value = {};
     directory.value = [];
     return;
   }
@@ -870,12 +932,12 @@ function setGreenPlumIngredientCount(uid: string, value: unknown) {
   };
 }
 
-async function loadQixiFriends(force = false) {
+async function loadActivityFriends(force = false) {
   if (!farmAccountStore.currentAccountId) {
-    qixiFriends.value = [];
+    activityFriends.value = [];
     return;
   }
-  qixiFriendsLoading.value = true;
+  activityFriendsLoading.value = true;
   try {
     const { error, data } = await fetchGetFarmFriendList({
       current: 1,
@@ -884,10 +946,10 @@ async function loadQixiFriends(force = false) {
       force
     });
     if (!error && data) {
-      qixiFriends.value = data.records || [];
+      activityFriends.value = data.records || [];
     }
   } finally {
-    qixiFriendsLoading.value = false;
+    activityFriendsLoading.value = false;
   }
 }
 
@@ -914,7 +976,7 @@ async function giftQixiSachet(payload: { friendGid: string; count: number }) {
   if (!farmAccountStore.currentAccountId) return;
   const count = Math.trunc(Number(payload.count));
   if (!payload.friendGid || count < 1) return;
-  const friend = qixiFriends.value.find(item => String(item.gid) === String(payload.friendGid));
+  const friend = activityFriends.value.find(item => String(item.gid) === String(payload.friendGid));
   const friendName =
     String(friend?.nickname || friend?.name || '').trim() || $t('page.farm.activity.qixiFriendFallback');
   pendingKey.value = 'qixiGift';
@@ -940,6 +1002,80 @@ async function giftQixiSachet(payload: { friendGid: string; count: number }) {
   }
 }
 
+async function claimCharitySeeds() {
+  if (!farmAccountStore.currentAccountId) return;
+  pendingKey.value = 'charitySeeds';
+  try {
+    const { error, data } = await fetchClaimFarmActivityCharitySeeds({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    // Go operate 端点返回操作结果（非完整快照），统一重新拉快照
+    await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function donateCharityLove() {
+  if (!farmAccountStore.currentAccountId) return;
+  pendingKey.value = 'charityDonate';
+  try {
+    const { error, data } = await fetchDonateFarmActivityCharityLove({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function claimCharityDailyGift() {
+  if (!farmAccountStore.currentAccountId) return;
+  pendingKey.value = 'charityGift';
+  try {
+    const { error, data } = await fetchClaimFarmActivityCharityDailyGift({
+      accountId: farmAccountStore.currentAccountId
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
+async function claimCharityProgress(target: string) {
+  if (!farmAccountStore.currentAccountId || !target) return;
+  pendingKey.value = `charityProgress:${target}`;
+  try {
+    const { error, data } = await fetchClaimFarmActivityCharityProgressReward({
+      accountId: farmAccountStore.currentAccountId,
+      target
+    });
+    if (error) {
+      message.error(error.message || $t('page.farm.activity.claimFailed'));
+      return;
+    }
+    notifyClaimResult(data as Record<string, unknown>);
+    await loadActivities();
+  } finally {
+    pendingKey.value = null;
+  }
+}
+
 function greenPlumIngredientCount(uid: string) {
   return greenPlumIngredientCounts.value[uid] || 1;
 }
@@ -955,7 +1091,7 @@ watch(
 watch(
   () => selectedGameplay.value,
   gameplay => {
-    if (gameplay === 'qixi') void loadQixiFriends();
+    if (gameplay === 'qixi' || gameplay === 'pet') void loadActivityFriends();
   }
 );
 
@@ -983,6 +1119,14 @@ onMounted(async () => {
   clockTimer = setInterval(() => {
     clockNow.value = Date.now();
   }, 1000);
+
+  // 雨落成诗窗口（静默，仅用于目录兜底入口的状态）
+  if (farmAccountStore.currentAccountId) {
+    const { error, data } = await fetchGetWeatherSnapshot(farmAccountStore.currentAccountId);
+    if (!error) {
+      weatherActivity.value = (data?.activity as { startTime?: number; endTime?: number } | undefined) ?? null;
+    }
+  }
 });
 
 onUnmounted(() => {
@@ -1384,14 +1528,36 @@ onUnmounted(() => {
         <QixiView
           v-else-if="selectedGameplay === 'qixi'"
           :activity="qixi"
-          :friends="qixiFriends"
-          :friends-loading="qixiFriendsLoading"
+          :friends="activityFriends"
+          :friends-loading="activityFriendsLoading"
           :pending-bridge="pendingKey === 'qixiBridge'"
           :pending-gift="pendingKey === 'qixiGift'"
           @claim-bridge="claimQixiBridge"
           @gift="giftQixiSachet"
-          @refresh-friends="loadQixiFriends(true)"
+          @refresh-friends="loadActivityFriends(true)"
         />
+        <!-- 公益小红花 -->
+        <CharityView
+          v-else-if="selectedGameplay === 'charity'"
+          :activity="charity"
+          :pending-seeds="pendingKey === 'charitySeeds'"
+          :pending-donate="pendingKey === 'charityDonate'"
+          :pending-gift="pendingKey === 'charityGift'"
+          :pending-progress="pendingKey?.startsWith('charityProgress:') || false"
+          @claim-seeds="claimCharitySeeds"
+          @donate-love="donateCharityLove"
+          @claim-daily-gift="claimCharityDailyGift"
+          @claim-progress="claimCharityProgress"
+        />
+        <!-- 萌宠成长日记：快照自加载；好友下拉走共享懒加载列表（选中后点击才探测单个好友） -->
+        <PetDiaryView
+          v-else-if="selectedGameplay === 'pet'"
+          :friends="activityFriends"
+          :friends-loading="activityFriendsLoading"
+          @refresh-friends="loadActivityFriends(true)"
+        />
+        <!-- 雨落成诗（天气活动） -->
+        <WeatherView v-else-if="selectedGameplay === 'weather'" />
         <!-- 青梅 -->
         <NCard v-else-if="selectedGameplay === 'greenPlum'" :bordered="false" size="small" class="card-wrapper">
           <div class="mb-12px rounded-8px bg-emerald-50 px-14px py-12px dark:bg-emerald-900/20">
