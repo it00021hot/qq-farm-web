@@ -294,6 +294,27 @@ declare namespace Api {
       [key: string]: unknown;
     };
 
+    type LandMutantEffect = {
+      id?: number;
+      name?: string;
+      icon?: string;
+      iconUrl?: string;
+      description?: string;
+      tag?: string;
+      activityId?: number;
+    };
+
+    type LandInteractionEffect = {
+      itemId?: number;
+      itemName?: string;
+      activityId?: number;
+      effectType?: string;
+      landId?: number;
+      hostGid?: string;
+      usedAt?: number;
+      confirmed?: boolean;
+    };
+
     type LandRow = {
       id: number;
       unlocked: boolean;
@@ -305,6 +326,8 @@ declare namespace Api {
       currentSeason?: number;
       totalSeason?: number;
       matureInSec?: number;
+      /** 绝对成熟时间戳（秒）——前端加载时换算，倒计时组件用它 + 共享时钟渲染 */
+      matureAt?: number;
       totalGrowTime?: number;
       needWater?: boolean;
       needWeed?: boolean;
@@ -320,7 +343,20 @@ declare namespace Api {
       plantSize?: number;
       occupiedByMaster?: boolean;
       occupiedLandIds?: number[];
-      matureAt?: number;
+      plantId?: number;
+      displayPlantId?: number;
+      mutantConfigIds?: number[];
+      mutantEffects?: LandMutantEffect[];
+      isMutated?: boolean;
+      /** 紫晶共鸣经验加成（万分值，>0 时显示徽标） */
+      purpleCrystalResonanceExpBonus?: number;
+      landBuff?: {
+        plantYieldBonus?: number;
+        plantingTimeReduction?: number;
+        plantExpBonus?: number;
+      };
+      interactionEffects?: LandInteractionEffect[];
+      needInteractionCleanup?: boolean;
     };
 
     type Career = {

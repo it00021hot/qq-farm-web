@@ -787,6 +787,11 @@ declare namespace App {
             careerHarvest: string;
             careerSteal: string;
             careerRatio: string;
+            mutantBadge: string;
+            purpleCrystalBadge: string;
+            interactionTitle: string;
+            interactionCleanup: string;
+            interactionCleanupHint: string;
             dailyGiftsTitle: string;
             growthTasksTitle: string;
             giftDone: string;
