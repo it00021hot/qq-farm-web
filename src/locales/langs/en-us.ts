@@ -612,6 +612,8 @@ const local: App.I18n.Schema = {
       },
       activity: {
         title: 'Activity Center',
+        viewRules: 'Event info',
+        rulesEmpty: 'No event description available',
         tabTravel: 'Travel Pass',
         charityClaimGift: 'Claim gift',
         charityClaimProgress: 'Claim reward',

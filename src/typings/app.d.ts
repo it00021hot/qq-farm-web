@@ -900,6 +900,8 @@ declare namespace App {
           };
           activity: {
             title: string;
+            viewRules: string;
+            rulesEmpty: string;
             tabTravel: string;
             charityClaimGift: string;
             charityClaimProgress: string;

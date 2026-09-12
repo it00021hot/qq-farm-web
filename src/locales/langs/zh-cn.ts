@@ -608,6 +608,8 @@ const local: App.I18n.Schema = {
       },
       activity: {
         title: '活动中心',
+        viewRules: '活动说明',
+        rulesEmpty: '暂无活动说明',
         tabTravel: '千星游记',
         charityClaimGift: '领取公益礼包',
         charityClaimProgress: '领取奖励',

@@ -27,6 +27,8 @@ import { $t } from '@/locales';
 import CharityView, { type CharityActivity } from './charity-view.vue';
 import PetDiaryView from './pet-diary-view.vue';
 import QixiView from './qixi-view.vue';
+import ActivityRulesDialog from './activity-rules-dialog.vue';
+import { normalizeActivityRules } from './rules';
 import WeatherView from './weather-view.vue';
 
 defineOptions({
@@ -221,6 +223,8 @@ const shopCategory = ref('__all__');
 const exchangeOpen = ref(false);
 const exchangeGoods = ref<ShopGoods | null>(null);
 const exchangeCount = ref(1);
+const travelRulesOpen = ref(false);
+const constellationRulesOpen = ref(false);
 
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -247,6 +251,8 @@ const constellationGroups = computed(() => {
   const groups = ((constellation.value.groups as ConstellationGroup[]) || []).slice();
   return groups.sort((a, b) => Number(a.order ?? 999) - Number(b.order ?? 999));
 });
+const passRules = computed(() => normalizeActivityRules(pass.value.rules));
+const constellationRules = computed(() => normalizeActivityRules(constellation.value.rules));
 const selectedConstellation = computed(
   () => constellationGroups.value.find(g => g.id === selectedConstellationId.value) || null
 );
@@ -1253,7 +1259,12 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div class="mb-12px text-12px text-gray-500">{{ $t('page.farm.activity.travelTip') }}</div>
+            <div class="mb-12px flex flex-wrap items-center gap-8px text-12px text-gray-500">
+              <span>{{ $t('page.farm.activity.travelTip') }}</span>
+              <NButton v-if="passRules" size="tiny" quaternary @click="travelRulesOpen = true">
+                {{ $t('page.farm.activity.viewRules') }}
+              </NButton>
+            </div>
 
             <NEmpty v-if="!passNodes.length" class="py-24px" :description="$t('common.noData')" />
             <div v-else class="flex-col gap-10px">
@@ -1311,6 +1322,11 @@ onUnmounted(() => {
 
           <!-- 观星礼录 -->
           <NCard v-show="activeTab === 'constellation'" :bordered="false" size="small" class="card-wrapper">
+            <div v-if="constellationRules" class="mb-12px flex justify-end">
+              <NButton size="small" quaternary @click="constellationRulesOpen = true">
+                {{ $t('page.farm.activity.viewRules') }}
+              </NButton>
+            </div>
             <NEmpty v-if="!constellationGroups.length" class="py-24px" :description="$t('common.noData')" />
             <template v-else>
               <div class="mb-12px flex flex-wrap gap-8px">
@@ -1845,6 +1861,12 @@ onUnmounted(() => {
         </NButton>
       </div>
     </NModal>
+    <ActivityRulesDialog :open="travelRulesOpen" :rules="passRules" @close="travelRulesOpen = false" />
+    <ActivityRulesDialog
+      :open="constellationRulesOpen"
+      :rules="constellationRules"
+      @close="constellationRulesOpen = false"
+    />
   </div>
 </template>
 
