@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import {
   NButton,
   NCard,
@@ -11,11 +11,13 @@ import {
   NInputNumber,
   NSelect,
   NSpace,
+  NSpin,
   NSwitch,
   NTabPane,
   NTabs,
   NTag,
-  NText
+  NText,
+  NTimePicker
 } from 'naive-ui';
 import {
   farmAllFertilizerLandTypes,
@@ -24,15 +26,31 @@ import {
   translateStringOptions
 } from '@/constants/business';
 import {
+  fetchFertilizerCheckAndBuy,
+  fetchGetDevicePresets,
   fetchGetFarmAnalyticsDetail,
   fetchGetFarmAutomationDetail,
   fetchGetFarmBagSeeds,
   fetchGetFarmSeeds,
-  fetchModifyFarmAutomation
+  fetchGetOfflineReminder,
+  fetchGetQqBotBindStatus,
+  fetchGetSystemConfig,
+  fetchModifyFarmAutomation,
+  fetchPollQqBotBind,
+  fetchResetSystemConfig,
+  fetchSaveOfflineReminder,
+  fetchSetSystemConfig,
+  fetchStartQqBotBind,
+  fetchTestOfflineReminder,
+  fetchUnbindQqBot,
+  type SystemConfigPayload
 } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
-import { useAuth } from '@/hooks/business/auth';
+import { useManagedInterval } from '@/hooks/common/use-managed-interval';
 import { $t } from '@/locales';
+import { useAppStore } from '@/store/modules/app';
+
+const appStore = useAppStore();
 
 defineOptions({
   name: 'FarmSettings'
@@ -57,14 +75,69 @@ interface BagSeedItem {
 }
 
 const farmAccountStore = useFarmAccountStore();
-const { hasAuth } = useAuth();
 
 const loading = ref(false);
 const strategySaving = ref(false);
 const automationSaving = ref(false);
-const activeTab = ref<'strategy' | 'automation'>('strategy');
+const offlineSaving = ref(false);
+const offlineTesting = ref(false);
+const activeTab = ref<'strategy' | 'automation' | 'offline' | 'system'>('strategy');
 
-// 新账号本地默认对齐 rust default_account_config（4fe322f：背包优先、偷菜 60-90、安静时段 01:00-08:30）
+// 登录设置（QQ 扫码 NapCat）页签已移除：NapCat 方式不好用不再暴露配置入口；
+// 后端 store 键与 IPC 命令保留，账号抽屉的「QQ 扫码」页签按既有 qqQrLogin
+// 开关决定展示（默认关闭即隐藏）
+
+const systemConfigLoading = ref(false);
+const systemConfigSaving = ref(false);
+const devicePresets = ref<
+  Array<{ id: string; name: string; description?: string; deviceInfo?: Record<string, unknown> }>
+>([]);
+const selectedPresetId = ref('');
+const defaultSystemConfig = ref<SystemConfigPayload>(createDefaultSystemConfig());
+const localSystemConfig = ref<SystemConfigPayload>(createDefaultSystemConfig());
+
+const platformOptions = [
+  { label: 'QQ', value: 'qq' },
+  { label: '微信', value: 'wx' }
+];
+const osOptions = [
+  { label: 'Windows', value: 'Windows' },
+  { label: 'iOS', value: 'iOS' },
+  { label: 'Android', value: 'Android' }
+];
+/** 时区白名单（后端 normalize_time_zone 同款，value 即 key） */
+const timeZoneOptions = [
+  { label: '北京时间 / 上海（UTC+8）', value: 'Asia/Shanghai' },
+  { label: '协调世界时（UTC）', value: 'UTC' },
+  { label: '香港', value: 'Asia/Hong_Kong' },
+  { label: '台北', value: 'Asia/Taipei' },
+  { label: '新加坡', value: 'Asia/Singapore' },
+  { label: '东京', value: 'Asia/Tokyo' },
+  { label: '首尔', value: 'Asia/Seoul' },
+  { label: '伦敦', value: 'Europe/London' },
+  { label: '纽约', value: 'America/New_York' },
+  { label: '洛杉矶', value: 'America/Los_Angeles' }
+];
+
+function createDefaultSystemConfig(): SystemConfigPayload {
+  return {
+    serverUrl: '',
+    clientVersion: '',
+    platform: 'qq',
+    os: 'Windows',
+    timeZone: 'Asia/Shanghai',
+    deviceInfo: {
+      os: 'Windows',
+      clientVersion: '',
+      sysSoftware: 'Windows',
+      network: 'wifi',
+      memory: '16384',
+      deviceId: 'DESKTOP-PC<WPC>',
+      userAgent: ''
+    }
+  };
+}
+
 const plantingStrategy = ref('bag_priority');
 const preferredSeedId = ref<number | null>(0);
 const bagSeedPriority = ref<number[]>([29003, 20129, 21380, 20108, 26032]);
@@ -84,7 +157,18 @@ const intervals = reactive<Api.Farm.IntervalsConfig>({
 const quietHours = reactive<Api.Farm.QuietHoursConfig>({
   enabled: true,
   start: '01:00',
-  end: '08:30'
+  end: '08:30',
+  continueFarm: true
+});
+
+/** 好友申请自动通过（好友区表单） */
+const friendAutoAccept = reactive({
+  enabled: true,
+  minLevel: 0,
+  requireOwnLevel: false,
+  harvestStealEnabled: true,
+  harvest: 8,
+  steal: 1
 });
 
 const fertilizerBuy = reactive({
@@ -93,6 +177,57 @@ const fertilizerBuy = reactive({
   normalCount: 1,
   normalThresholdHours: 10
 });
+
+const offline = reactive<Api.Farm.OfflineReminder>({
+  provider: 'none',
+  qqBot: {
+    appId: '',
+    clientSecret: ''
+  },
+  qqBotBinding: {
+    userOpenid: '',
+    boundAt: 0,
+    nickname: ''
+  },
+  wechatBot: {},
+  title: '账号下线提醒',
+  msg: '账号下线',
+  offlineDeleteSec: 0,
+  endpoint: '',
+  token: '',
+  secret: ''
+});
+
+const qqBotBindStatus = reactive<Api.Farm.QqBotBindStatus>({
+  credentialsConfigured: false,
+  bound: false,
+  binding: { userOpenid: '' },
+  botInviteUrl: ''
+});
+const qqBotBindSessionId = ref('');
+const qqBotBindQrDataUrl = ref('');
+const qqBotBindLoading = ref(false);
+const qqBotBindPolling = ref(false);
+const qqBotBindPollTimer = useManagedInterval();
+
+const qqBotCredentialsReady = computed(
+  () => Boolean(offline.qqBot.appId.trim()) && Boolean(offline.qqBot.clientSecret.trim())
+);
+
+const qqBotBindStateLabel = computed(() => {
+  if (qqBotBindPolling.value) return $t('page.farm.settings.qqBotBindWaiting');
+  if (qqBotBindStatus.bound || offline.qqBotBinding.userOpenid) return $t('page.farm.settings.qqBotBindBound');
+  return $t('page.farm.settings.qqBotBindUnbound');
+});
+
+const providerOptions = computed(() => [
+  { label: $t('page.farm.settings.providerNone'), value: 'none' },
+  { label: $t('page.farm.settings.providerQqBot'), value: 'qq_bot' },
+  { label: $t('page.farm.settings.providerDingTalk'), value: 'ding_talk' },
+  { label: $t('page.farm.settings.providerWechatBot'), value: 'wechat_bot', disabled: true }
+]);
+
+const currentProviderDocUrl = computed(() => (offline.provider === 'qq_bot' ? 'https://bot.q.qq.com/wiki/' : ''));
 
 /** Bot AutomationConfig keys only (qq-farm-bot Settings) */
 const automation = reactive<Api.Farm.AutomationConfig>({
@@ -113,7 +248,15 @@ const automation = reactive<Api.Farm.AutomationConfig>({
   fertilizer_multi_season: true,
   fertilizer_land_types: [...farmAllFertilizerLandTypes],
   fertilizer_smart_seconds: 360,
-  skip_own_weed_bug: true
+  skip_own_weed_bug: true,
+  mystery_shop_auto_buy: false,
+  mystery_shop_arrival_notify: false,
+  mystery_shop_purchase_notify: false,
+  mystery_shop_allow_gold: false,
+  mystery_shop_allow_coupon: false,
+  mystery_shop_allow_gold_bean: false,
+  mystery_shop_allow_diamond: false,
+  friend_auto_accept: true
 });
 
 const showFertilizerBuyPanel = computed(
@@ -265,7 +408,7 @@ async function fetchSeedOptions(accountId = farmAccountStore.currentAccountId) {
     const { error, data } = await fetchGetFarmSeeds(accountId);
     if (requestRevision !== seedOptionsRequestRevision || accountId !== farmAccountStore.currentAccountId) return;
     if (!error && data) {
-      seedOptions.value = data.map(seed => ({
+      seedOptions.value = data.map((seed: any) => ({
         seedId: seed.seedId,
         name: seed.name,
         requiredLevel: Number(seed.requiredLevel) || 0,
@@ -302,7 +445,7 @@ async function fetchBagSeeds(accountId = farmAccountStore.currentAccountId) {
       return;
     }
     bagSeeds.value = (data as BagSeedItem[])
-      .map(item => ({
+      .map((item: any) => ({
         seedId: Number(item.seedId),
         name: item.name || String(item.seedId),
         count: Number(item.count) || 0,
@@ -350,7 +493,7 @@ async function sortBagSeedsByFallbackStrategy(strategy: string, accountId = farm
         }
         const rankMap = new Map<number, number>();
         const rankings = !error && data?.rankings ? data.rankings : [];
-        rankings.forEach((item, index) => rankMap.set(Number(item.seedId), index));
+        rankings.forEach((item: any, index: number) => rankMap.set(Number(item.seedId), index));
         ordered.sort((a, b) => {
           const aRank = rankMap.get(a.seedId) ?? Number.MAX_SAFE_INTEGER;
           const bRank = rankMap.get(b.seedId) ?? Number.MAX_SAFE_INTEGER;
@@ -481,13 +624,27 @@ function applyDetail(data: Api.Farm.AccountAutomationDetail) {
       : [...farmAllFertilizerLandTypes];
   automation.fertilizer_smart_seconds = src.fertilizer_smart_seconds ?? 360;
   automation.skip_own_weed_bug = !!src.skip_own_weed_bug;
+  automation.mystery_shop_auto_buy = !!src.mystery_shop_auto_buy;
+  automation.mystery_shop_arrival_notify = !!src.mystery_shop_arrival_notify;
+  automation.mystery_shop_purchase_notify = !!src.mystery_shop_purchase_notify;
+  automation.mystery_shop_allow_gold = !!src.mystery_shop_allow_gold;
+  automation.mystery_shop_allow_coupon = !!src.mystery_shop_allow_coupon;
+  automation.mystery_shop_allow_gold_bean = !!src.mystery_shop_allow_gold_bean;
+  automation.mystery_shop_allow_diamond = !!src.mystery_shop_allow_diamond;
+  automation.friend_auto_accept = src.friend_auto_accept !== false;
 
   if (data.intervals) Object.assign(intervals, data.intervals);
   if (data.friendQuietHours) Object.assign(quietHours, data.friendQuietHours);
-  plantingStrategy.value = data.plantingStrategy || 'preferred';
+  friendAutoAccept.enabled = data.friendAutoAccept !== false;
+  friendAutoAccept.minLevel = Number(data.autoAcceptFriendMinLevel ?? 0);
+  friendAutoAccept.requireOwnLevel = !!data.autoAcceptRequireOwnLevel;
+  friendAutoAccept.harvestStealEnabled = data.autoAcceptHarvestStealEnabled !== false;
+  friendAutoAccept.harvest = Number(data.autoAcceptHarvestStealHarvest ?? 8);
+  friendAutoAccept.steal = Number(data.autoAcceptHarvestStealSteal ?? 1);
+  plantingStrategy.value = data.plantingStrategy || 'bag_priority';
   preferredSeedId.value = data.preferredSeedId ?? 0;
   bagSeedPriority.value = [...(data.bagSeedPriority || [])];
-  bagSeedFallbackStrategy.value = data.bagSeedFallbackStrategy || 'level';
+  bagSeedFallbackStrategy.value = data.bagSeedFallbackStrategy || 'preferred';
   plantOrderRandom.value = !!data.plantOrderRandom;
   plantDelaySeconds.value = data.plantDelaySeconds ?? 0;
   stealDelaySeconds.value = data.stealDelaySeconds ?? 1;
@@ -541,7 +698,13 @@ async function handleSaveStrategy() {
       plantOrderRandom: plantOrderRandom.value,
       plantDelaySeconds: plantDelaySeconds.value,
       stealDelaySeconds: stealDelaySeconds.value,
-      friendQuietHours: { ...quietHours }
+      plantBlacklist: [...plantBlacklist.value],
+      friendQuietHours: {
+        enabled: quietHours.enabled,
+        start: quietHours.start,
+        end: quietHours.end,
+        continueFarm: quietHours.continueFarm !== false
+      }
     });
     if (!error) {
       window.$message?.success($t('page.farm.settings.saveStrategySuccess'));
@@ -575,8 +738,22 @@ async function handleSaveAutomation() {
         fertilizer_multi_season: automation.fertilizer_multi_season,
         fertilizer_land_types: [...(automation.fertilizer_land_types || [])],
         fertilizer_smart_seconds: automation.fertilizer_smart_seconds,
-        skip_own_weed_bug: automation.skip_own_weed_bug
+        skip_own_weed_bug: automation.skip_own_weed_bug,
+        mystery_shop_auto_buy: automation.mystery_shop_auto_buy,
+        mystery_shop_arrival_notify: automation.mystery_shop_arrival_notify,
+        mystery_shop_purchase_notify: automation.mystery_shop_purchase_notify,
+        mystery_shop_allow_gold: automation.mystery_shop_allow_gold,
+        mystery_shop_allow_coupon: automation.mystery_shop_allow_coupon,
+        mystery_shop_allow_gold_bean: automation.mystery_shop_allow_gold_bean,
+        mystery_shop_allow_diamond: automation.mystery_shop_allow_diamond,
+        friend_auto_accept: automation.friend_auto_accept
       },
+      friendAutoAccept: friendAutoAccept.enabled,
+      autoAcceptFriendMinLevel: friendAutoAccept.minLevel,
+      autoAcceptRequireOwnLevel: friendAutoAccept.requireOwnLevel,
+      autoAcceptHarvestStealEnabled: friendAutoAccept.harvestStealEnabled,
+      autoAcceptHarvestStealHarvest: friendAutoAccept.harvest,
+      autoAcceptHarvestStealSteal: friendAutoAccept.steal,
       fertilizerBuyOrganicCount: fertilizerBuy.organicCount,
       fertilizerBuyOrganicThresholdHours: fertilizerBuy.organicThresholdHours,
       fertilizerBuyNormalCount: fertilizerBuy.normalCount,
@@ -584,9 +761,273 @@ async function handleSaveAutomation() {
     });
     if (!error) {
       window.$message?.success($t('page.farm.settings.saveAutomationSuccess'));
+      if (automation.fertilizer_buy_organic || automation.fertilizer_buy_normal) {
+        const check = await fetchFertilizerCheckAndBuy(farmAccountStore.currentAccountId);
+        if (check.error) {
+          window.$message?.warning($t('page.farm.settings.fertilizerCheckFailed'));
+        }
+      }
     }
   } finally {
     automationSaving.value = false;
+  }
+}
+
+async function loadDevicePresets() {
+  const { error, data } = await fetchGetDevicePresets();
+  if (!error && Array.isArray(data)) {
+    devicePresets.value = data as typeof devicePresets.value;
+  }
+}
+
+async function loadSystemConfig() {
+  systemConfigLoading.value = true;
+  try {
+    const { error, data } = await fetchGetSystemConfig();
+    if (!error && data) {
+      defaultSystemConfig.value = { ...data.default };
+      localSystemConfig.value = { ...(data.saved || data.default) };
+    }
+  } finally {
+    systemConfigLoading.value = false;
+  }
+}
+
+function applyDevicePreset(presetId: string) {
+  const preset = devicePresets.value.find(item => item.id === presetId);
+  if (!preset) return;
+  const deviceInfo = {
+    ...createDefaultSystemConfig().deviceInfo,
+    ...preset.deviceInfo
+  } as SystemConfigPayload['deviceInfo'];
+  localSystemConfig.value = {
+    ...localSystemConfig.value,
+    os: deviceInfo.os || 'Windows',
+    clientVersion: deviceInfo.clientVersion || '',
+    deviceInfo
+  };
+  selectedPresetId.value = presetId;
+}
+
+async function handleSaveSystemConfig() {
+  systemConfigSaving.value = true;
+  try {
+    localSystemConfig.value.clientVersion = localSystemConfig.value.deviceInfo.clientVersion || '';
+    localSystemConfig.value.os = localSystemConfig.value.deviceInfo.os;
+    const { error } = await fetchSetSystemConfig(localSystemConfig.value);
+    if (!error) {
+      window.$message?.success($t('page.farm.settings.saveSystemConfigSuccess'));
+    }
+  } finally {
+    systemConfigSaving.value = false;
+  }
+}
+
+async function handleResetSystemConfig() {
+  systemConfigSaving.value = true;
+  try {
+    const { error, data } = await fetchResetSystemConfig();
+    if (!error && data) {
+      defaultSystemConfig.value = { ...data.default };
+      localSystemConfig.value = { ...(data.saved || data.default) };
+      selectedPresetId.value = '';
+      window.$message?.success($t('page.farm.settings.resetSystemConfigSuccess'));
+    }
+  } finally {
+    systemConfigSaving.value = false;
+  }
+}
+
+function applyOffline(data: Api.Farm.OfflineReminder) {
+  offline.provider = data.provider || 'none';
+  offline.qqBot.appId = data.qqBot?.appId || '';
+  offline.qqBot.clientSecret = data.qqBot?.clientSecret || '';
+  offline.qqBotBinding = {
+    userOpenid: data.qqBotBinding?.userOpenid || '',
+    boundAt: Number(data.qqBotBinding?.boundAt || 0),
+    nickname: data.qqBotBinding?.nickname || ''
+  };
+  offline.title = data.title || '';
+  offline.msg = data.msg || '';
+  offline.offlineDeleteSec = Number(data.offlineDeleteSec || 0);
+  offline.endpoint = data.endpoint || '';
+  offline.token = data.token || '';
+  offline.secret = data.secret || '';
+}
+
+async function loadQqBotBindStatus() {
+  const { error, data } = await fetchGetQqBotBindStatus();
+  if (error || !data) return;
+  qqBotBindStatus.credentialsConfigured = data.credentialsConfigured;
+  qqBotBindStatus.bound = data.bound;
+  qqBotBindStatus.binding = data.binding;
+  qqBotBindStatus.botInviteUrl = data.botInviteUrl;
+  if (data.bound && data.binding?.userOpenid) {
+    offline.qqBotBinding = { ...data.binding };
+    if (offline.provider === 'none') offline.provider = 'qq_bot';
+  }
+}
+
+function stopQqBotBindPolling() {
+  qqBotBindPollTimer.stop();
+  qqBotBindPolling.value = false;
+}
+
+async function pollQqBotBindOnce() {
+  if (!qqBotBindSessionId.value) return;
+  const { error, data } = await fetchPollQqBotBind(qqBotBindSessionId.value);
+  if (error || !data) return;
+  if (data.status === 'bound' && data.binding?.userOpenid) {
+    stopQqBotBindPolling();
+    offline.provider = 'qq_bot';
+    offline.qqBotBinding = { ...data.binding };
+    qqBotBindStatus.bound = true;
+    qqBotBindStatus.binding = { ...data.binding };
+    qqBotBindSessionId.value = '';
+    qqBotBindQrDataUrl.value = '';
+    window.$message?.success($t('page.farm.settings.qqBotBindSuccess'));
+    const { error: reminderError, data: reminder } = await fetchGetOfflineReminder();
+    if (!reminderError && reminder) applyOffline(reminder);
+    await loadQqBotBindStatus();
+    return;
+  }
+  if (data.status === 'expired') {
+    stopQqBotBindPolling();
+    qqBotBindSessionId.value = '';
+    qqBotBindQrDataUrl.value = '';
+    window.$message?.warning($t('page.farm.settings.qqBotBindExpired'));
+  }
+}
+
+function startQqBotBindPolling() {
+  stopQqBotBindPolling();
+  qqBotBindPolling.value = true;
+  void pollQqBotBindOnce();
+  qqBotBindPollTimer.start(() => void pollQqBotBindOnce(), 2000);
+}
+
+async function handleStartQqBotBind() {
+  if (qqBotBindPolling.value || qqBotBindLoading.value) return;
+  if (!qqBotCredentialsReady.value) {
+    window.$message?.warning($t('page.farm.settings.qqBotCredentialsMissing'));
+    return;
+  }
+  qqBotBindLoading.value = true;
+  try {
+    const { error: saveError } = await fetchSaveOfflineReminder(offlinePayload());
+    if (saveError) return;
+    const { error, data } = await fetchStartQqBotBind();
+    if (error || !data?.sessionId) return;
+    offline.provider = 'qq_bot';
+    qqBotBindSessionId.value = data.sessionId;
+    qqBotBindQrDataUrl.value = data.qrDataUrl || '';
+    qqBotBindStatus.botInviteUrl = data.botInviteUrl || qqBotBindStatus.botInviteUrl;
+    startQqBotBindPolling();
+  } finally {
+    qqBotBindLoading.value = false;
+  }
+}
+
+async function handleUnbindQqBot() {
+  qqBotBindLoading.value = true;
+  try {
+    stopQqBotBindPolling();
+    const { error, data } = await fetchUnbindQqBot();
+    if (!error && data) applyOffline(data);
+    qqBotBindStatus.bound = false;
+    qqBotBindStatus.binding = { userOpenid: '' };
+    qqBotBindSessionId.value = '';
+    qqBotBindQrDataUrl.value = '';
+    window.$message?.success($t('page.farm.settings.qqBotUnbindSuccess'));
+  } finally {
+    qqBotBindLoading.value = false;
+  }
+}
+
+async function openBotInvite() {
+  const url = qqBotBindStatus.botInviteUrl;
+  if (!url) return;
+  try {
+    await window.open(url);
+  } catch (error) {
+    window.$message?.error(`${$t('page.farm.settings.botDocsOpenFail')}: ${String(error)}`);
+  }
+}
+
+async function loadOffline() {
+  const { error, data } = await fetchGetOfflineReminder();
+  if (!error && data) {
+    applyOffline(data);
+  }
+  await loadQqBotBindStatus();
+}
+
+function offlinePayload(): Api.Farm.OfflineReminder {
+  return {
+    provider: offline.provider || 'none',
+    qqBot: {
+      appId: offline.qqBot.appId || '',
+      clientSecret: offline.qqBot.clientSecret || ''
+    },
+    qqBotBinding: {
+      userOpenid: offline.qqBotBinding.userOpenid || '',
+      boundAt: Number(offline.qqBotBinding.boundAt || 0),
+      nickname: offline.qqBotBinding.nickname || ''
+    },
+    wechatBot: {},
+    title: offline.title || '',
+    msg: offline.msg || '',
+    offlineDeleteSec: Number(offline.offlineDeleteSec || 0),
+    endpoint: offline.endpoint || '',
+    token: offline.token || '',
+    secret: offline.secret || ''
+  };
+}
+
+/** 钉钉：endpoint 与 token 二选一即可测试。 */
+const dingTalkReady = computed(
+  () => offline.provider === 'ding_talk' && Boolean(offline.endpoint?.trim() || offline.token?.trim())
+);
+const offlineTestDisabled = computed(() => {
+  if (offline.provider === 'ding_talk') return !dingTalkReady.value;
+  return offline.provider !== 'qq_bot' || (!qqBotBindStatus.bound && !offline.qqBotBinding.userOpenid);
+});
+
+async function handleSaveOffline() {
+  offlineSaving.value = true;
+  try {
+    const { error, data } = await fetchSaveOfflineReminder(offlinePayload());
+    if (!error) {
+      if (data) applyOffline(data);
+      window.$message?.success($t('page.farm.settings.saveOfflineSuccess'));
+    }
+  } finally {
+    offlineSaving.value = false;
+  }
+}
+
+async function handleTestOffline() {
+  offlineTesting.value = true;
+  try {
+    const { error, data } = await fetchTestOfflineReminder(offlinePayload());
+    if (error) return;
+    if (data?.ok) {
+      window.$message?.success($t('page.farm.settings.testOfflineSuccess'));
+    } else {
+      window.$message?.error(`${$t('page.farm.settings.testOfflineFail')}: ${data?.msg || 'unknown'}`);
+    }
+  } finally {
+    offlineTesting.value = false;
+  }
+}
+
+async function openProviderDocs() {
+  const url = currentProviderDocUrl.value;
+  if (!url) return;
+  try {
+    await window.open(url);
+  } catch (error) {
+    window.$message?.error(`${$t('page.farm.settings.botDocsOpenFail')}: ${String(error)}`);
   }
 }
 
@@ -650,9 +1091,9 @@ watch(
       });
       if (requestRevision !== previewRequestRevision || accountId !== farmAccountStore.currentAccountId) return;
       const rankings = !error && data?.rankings ? data.rankings : [];
-      const availableIds = new Set(available.map(seed => seed.seedId));
-      const match = rankings.find(item => availableIds.has(Number(item.seedId)));
-      const seed = match ? available.find(item => item.seedId === Number(match.seedId)) : undefined;
+      const availableIds = new Set(available.map((seed: any) => seed.seedId));
+      const match = rankings.find((item: any) => availableIds.has(Number(item.seedId)));
+      const seed = match ? available.find((item: any) => item.seedId === Number(match.seedId)) : undefined;
       strategyPreviewLabel.value = seed
         ? `Lv${seed.requiredLevel} ${seed.name}`
         : $t('page.farm.settings.strategyPreviewNoMatch');
@@ -676,22 +1117,25 @@ onMounted(async () => {
   if (!farmAccountStore.accounts.length) {
     await farmAccountStore.loadAccounts();
   }
-  await loadConfig();
+  await Promise.all([loadConfig(), loadOffline(), loadDevicePresets(), loadSystemConfig()]);
+});
+
+onUnmounted(() => {
+  stopQqBotBindPolling();
 });
 </script>
 
 <template>
   <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
-    <NEmpty
-      v-if="!farmAccountStore.currentAccountId"
-      class="py-48px"
-      :description="$t('page.farm.common.selectAccount')"
-    />
-
-    <NTabs v-else v-model:value="activeTab" type="line" animated>
+    <NTabs v-model:value="activeTab" type="line" animated>
       <NTabPane name="strategy" :tab="$t('page.farm.settings.strategy')">
-        <NCard :bordered="false" size="small" class="card-wrapper">
-          <NForm label-placement="left" :label-width="140">
+        <NEmpty
+          v-if="!farmAccountStore.currentAccountId"
+          class="py-48px"
+          :description="$t('page.farm.common.selectAccount')"
+        />
+        <NCard v-else :bordered="false" size="small" class="card-wrapper">
+          <NForm :label-placement="appStore.isMobile ? 'top' : 'left'" :label-width="140">
             <div class="grid gap-12px md:grid-cols-2">
               <NFormItem :label="$t('page.farm.settings.plantingStrategy')">
                 <NSelect v-model:value="plantingStrategy" class="w-full" :options="strategyOptions" />
@@ -828,16 +1272,32 @@ onMounted(async () => {
             </div>
 
             <NDivider title-placement="left">{{ $t('page.farm.settings.quietHours') }}</NDivider>
-            <NSpace align="center" class="mb-12px">
-              <span>{{ $t('page.farm.settings.quietHoursEnable') }}</span>
-              <NSwitch v-model:value="quietHours.enabled" />
-            </NSpace>
-            <div v-if="quietHours.enabled" class="grid max-w-480px gap-12px sm:grid-cols-2">
+            <div class="grid gap-12px sm:grid-cols-2 md:grid-cols-3">
+              <NFormItem :label="$t('page.farm.settings.quietHoursEnable')">
+                <NSwitch v-model:value="quietHours.enabled" />
+              </NFormItem>
               <NFormItem :label="$t('page.farm.settings.quietStart')">
-                <NInput v-model:value="quietHours.start" placeholder="01:00" />
+                <NTimePicker
+                  v-model:formatted-value="quietHours.start"
+                  class="w-full"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  :clearable="false"
+                  :disabled="!quietHours.enabled"
+                />
               </NFormItem>
               <NFormItem :label="$t('page.farm.settings.quietEnd')">
-                <NInput v-model:value="quietHours.end" placeholder="07:30" />
+                <NTimePicker
+                  v-model:formatted-value="quietHours.end"
+                  class="w-full"
+                  format="HH:mm"
+                  value-format="HH:mm"
+                  :clearable="false"
+                  :disabled="!quietHours.enabled"
+                />
+              </NFormItem>
+              <NFormItem :label="$t('page.farm.settings.quietContinueFarm')">
+                <NSwitch v-model:value="quietHours.continueFarm" :disabled="!quietHours.enabled" />
               </NFormItem>
             </div>
 
@@ -856,13 +1316,7 @@ onMounted(async () => {
           </NForm>
 
           <div class="mt-16px flex justify-end border-t border-[var(--n-border-color)] pt-16px">
-            <NButton
-              v-if="hasAuth('farm-automation:modify')"
-              type="primary"
-              size="small"
-              :loading="strategySaving || loading"
-              @click="handleSaveStrategy"
-            >
+            <NButton type="primary" size="small" :loading="strategySaving || loading" @click="handleSaveStrategy">
               {{ $t('page.farm.settings.saveStrategy') }}
             </NButton>
           </div>
@@ -870,7 +1324,12 @@ onMounted(async () => {
       </NTabPane>
 
       <NTabPane name="automation" :tab="$t('page.farm.settings.automation')">
-        <NCard :bordered="false" size="small" class="card-wrapper">
+        <NEmpty
+          v-if="!farmAccountStore.currentAccountId"
+          class="py-48px"
+          :description="$t('page.farm.common.selectAccount')"
+        />
+        <NCard v-else :bordered="false" size="small" class="card-wrapper">
           <div class="auto-switch-grid">
             <div class="auto-switch-item">
               <NSwitch v-model:value="automation.farm" />
@@ -912,11 +1371,39 @@ onMounted(async () => {
               <NSwitch v-model:value="automation.skip_own_weed_bug" />
               <span>{{ $t('page.farm.settings.skipOwnWeedBug') }}</span>
             </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_auto_buy" />
+              <span>{{ $t('page.farm.settings.mysteryAutoBuy') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_arrival_notify" />
+              <span>{{ $t('page.farm.settings.mysteryArrivalNotify') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_purchase_notify" />
+              <span>{{ $t('page.farm.settings.mysteryPurchaseNotify') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_allow_gold" />
+              <span>{{ $t('page.farm.settings.mysteryAllowGold') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_allow_coupon" />
+              <span>{{ $t('page.farm.settings.mysteryAllowCoupon') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_allow_gold_bean" />
+              <span>{{ $t('page.farm.settings.mysteryAllowGoldBean') }}</span>
+            </div>
+            <div class="auto-switch-item">
+              <NSwitch v-model:value="automation.mystery_shop_allow_diamond" />
+              <span>{{ $t('page.farm.settings.mysteryAllowDiamond') }}</span>
+            </div>
           </div>
 
           <template v-if="showFertilizerBuyPanel">
             <NDivider title-placement="left">{{ $t('page.farm.settings.fertilizerBuy') }}</NDivider>
-            <NForm label-placement="left" :label-width="140">
+            <NForm :label-placement="appStore.isMobile ? 'top' : 'left'" :label-width="140">
               <div v-if="automation.fertilizer_buy_organic" class="mb-12px grid gap-12px sm:grid-cols-2 md:grid-cols-3">
                 <div class="sm:col-span-2 md:col-span-3 text-sm font-medium">
                   {{ $t('page.farm.settings.fertilizerBuyOrganicTitle') }}
@@ -968,6 +1455,65 @@ onMounted(async () => {
                 <span>{{ $t('page.farm.settings.friendHelpExpLimit') }}</span>
               </div>
             </div>
+
+            <NForm class="mt-12px" :label-placement="appStore.isMobile ? 'top' : 'left'" :label-width="140">
+              <div class="grid gap-12px sm:grid-cols-2 md:grid-cols-3">
+                <NFormItem :label="$t('page.farm.settings.friendAutoAccept')">
+                  <NSwitch v-model:value="automation.friend_auto_accept" />
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.autoAcceptFriendMinLevel')">
+                  <div class="flex w-full items-center gap-8px">
+                    <NInputNumber
+                      v-model:value="friendAutoAccept.minLevel"
+                      class="w-full"
+                      :min="0"
+                      :max="200"
+                      :disabled="!automation.friend_auto_accept"
+                    />
+                    <NText depth="3" class="shrink-0 text-12px">
+                      {{ $t('page.farm.settings.autoAcceptMinLevelHint') }}
+                    </NText>
+                  </div>
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.autoAcceptRequireOwnLevel')">
+                  <NSwitch
+                    v-model:value="friendAutoAccept.requireOwnLevel"
+                    :disabled="!automation.friend_auto_accept"
+                  />
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.autoAcceptHarvestStealEnabled')">
+                  <NSwitch
+                    v-model:value="friendAutoAccept.harvestStealEnabled"
+                    :disabled="!automation.friend_auto_accept"
+                  />
+                </NFormItem>
+                <NFormItem
+                  v-if="friendAutoAccept.harvestStealEnabled"
+                  :label="$t('page.farm.settings.autoAcceptHarvestStealHarvest')"
+                >
+                  <NInputNumber
+                    v-model:value="friendAutoAccept.harvest"
+                    class="w-full"
+                    :min="0"
+                    :max="9999"
+                    :disabled="!automation.friend_auto_accept"
+                  />
+                </NFormItem>
+                <NFormItem
+                  v-if="friendAutoAccept.harvestStealEnabled"
+                  :label="$t('page.farm.settings.autoAcceptHarvestStealSteal')"
+                >
+                  <NInputNumber
+                    v-model:value="friendAutoAccept.steal"
+                    class="w-full"
+                    :min="1"
+                    :max="9999"
+                    :disabled="!automation.friend_auto_accept"
+                  />
+                </NFormItem>
+              </div>
+              <NText depth="3" class="text-12px">{{ $t('page.farm.settings.autoAcceptHint') }}</NText>
+            </NForm>
           </template>
 
           <NDivider title-placement="left">{{ $t('page.farm.settings.fertilizer') }}</NDivider>
@@ -1011,16 +1557,227 @@ onMounted(async () => {
           </div>
 
           <div class="mt-16px flex justify-end border-t border-[var(--n-border-color)] pt-16px">
-            <NButton
-              v-if="hasAuth('farm-automation:modify')"
-              type="primary"
-              size="small"
-              :loading="automationSaving || loading"
-              @click="handleSaveAutomation"
-            >
+            <NButton type="primary" size="small" :loading="automationSaving || loading" @click="handleSaveAutomation">
               {{ $t('page.farm.settings.saveAutomation') }}
             </NButton>
           </div>
+        </NCard>
+      </NTabPane>
+
+      <NTabPane name="offline" :tab="$t('page.farm.settings.offlineReminder')">
+        <NCard :bordered="false" size="small" class="card-wrapper">
+          <NText depth="3" class="mb-16px block text-12px">{{ $t('page.farm.settings.offlineHint') }}</NText>
+          <NForm :label-placement="appStore.isMobile ? 'top' : 'left'" :label-width="140">
+            <div class="grid max-w-640px gap-12px">
+              <NFormItem :label="$t('page.farm.settings.provider')">
+                <div class="flex w-full gap-8px">
+                  <NSelect v-model:value="offline.provider" class="flex-1" :options="providerOptions" />
+                  <NButton :disabled="!currentProviderDocUrl" @click="openProviderDocs">
+                    {{ $t('page.farm.settings.botDocs') }}
+                  </NButton>
+                </div>
+              </NFormItem>
+              <template v-if="offline.provider === 'qq_bot'">
+                <NFormItem :label="$t('page.farm.settings.qqBotAppId')">
+                  <NInput v-model:value="offline.qqBot.appId" />
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.qqBotClientSecret')">
+                  <NInput v-model:value="offline.qqBot.clientSecret" type="password" show-password-on="click" />
+                </NFormItem>
+                <NText depth="3" class="text-12px">{{ $t('page.farm.settings.qqBotHint') }}</NText>
+                <NFormItem :label="$t('page.farm.settings.qqBotBindStatus')">
+                  <div class="flex w-full flex-col gap-12px">
+                    <NTag :type="qqBotBindStatus.bound || offline.qqBotBinding.userOpenid ? 'success' : 'default'">
+                      {{ qqBotBindStateLabel }}
+                    </NTag>
+                    <NText v-if="offline.qqBotBinding.nickname" depth="3" class="text-12px">
+                      {{ offline.qqBotBinding.nickname }}
+                    </NText>
+                    <div v-if="qqBotBindQrDataUrl" class="flex flex-col items-start gap-8px">
+                      <img
+                        :src="qqBotBindQrDataUrl"
+                        alt="qq-bot-bind-qr"
+                        class="h-180px w-180px rounded-8px border border-[var(--n-border-color)]"
+                      />
+                      <NText depth="3" class="text-12px">{{ $t('page.farm.settings.qqBotBindScanHint') }}</NText>
+                    </div>
+                    <NText v-else-if="qqBotBindPolling" depth="3" class="text-12px">
+                      {{ $t('page.farm.settings.qqBotBindManualHint') }}
+                    </NText>
+                    <div class="flex flex-wrap gap-8px">
+                      <NButton
+                        type="primary"
+                        :loading="qqBotBindLoading"
+                        :disabled="!qqBotCredentialsReady || qqBotBindPolling"
+                        @click="handleStartQqBotBind"
+                      >
+                        {{
+                          qqBotBindPolling
+                            ? $t('page.farm.settings.qqBotBindWaiting')
+                            : $t('page.farm.settings.qqBotBindStart')
+                        }}
+                      </NButton>
+                      <NButton :disabled="!qqBotBindStatus.botInviteUrl" @click="openBotInvite">
+                        {{ $t('page.farm.settings.qqBotOpenBot') }}
+                      </NButton>
+                      <NButton
+                        :disabled="!qqBotBindStatus.bound && !offline.qqBotBinding.userOpenid"
+                        @click="handleUnbindQqBot"
+                      >
+                        {{ $t('page.farm.settings.qqBotUnbind') }}
+                      </NButton>
+                    </div>
+                  </div>
+                </NFormItem>
+              </template>
+              <template v-else-if="offline.provider === 'ding_talk'">
+                <NFormItem :label="$t('page.farm.settings.dingtalkEndpoint')">
+                  <NInput
+                    v-model:value="offline.endpoint"
+                    :placeholder="$t('page.farm.settings.dingtalkEndpointPlaceholder')"
+                  />
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.dingtalkToken')">
+                  <NInput
+                    v-model:value="offline.token"
+                    type="password"
+                    show-password-on="click"
+                    :placeholder="$t('page.farm.settings.dingtalkTokenPlaceholder')"
+                  />
+                </NFormItem>
+                <NFormItem :label="$t('page.farm.settings.dingtalkSecret')">
+                  <NInput
+                    v-model:value="offline.secret"
+                    type="password"
+                    show-password-on="click"
+                    :placeholder="$t('page.farm.settings.dingtalkSecretPlaceholder')"
+                  />
+                </NFormItem>
+                <NText depth="3" class="text-12px">{{ $t('page.farm.settings.dingtalkHint') }}</NText>
+              </template>
+            </div>
+          </NForm>
+          <div class="mt-16px flex justify-end gap-8px border-t border-[var(--n-border-color)] pt-16px">
+            <NButton
+              size="small"
+              :loading="offlineTesting"
+              :disabled="offlineSaving || offlineTestDisabled"
+              @click="handleTestOffline"
+            >
+              {{ $t('page.farm.settings.testOffline') }}
+            </NButton>
+            <NButton
+              type="primary"
+              size="small"
+              :loading="offlineSaving"
+              :disabled="offlineTesting"
+              @click="handleSaveOffline"
+            >
+              {{ $t('page.farm.settings.saveOffline') }}
+            </NButton>
+          </div>
+        </NCard>
+      </NTabPane>
+
+      <NTabPane name="system" :tab="$t('page.farm.settings.system')">
+        <NCard :bordered="false" size="small" class="card-wrapper">
+          <template #header>
+            <div class="text-16px font-medium">{{ $t('page.farm.settings.runtimeEnv') }}</div>
+          </template>
+
+          <NSpin :show="systemConfigLoading">
+            <div class="flex-col gap-16px">
+              <div v-if="devicePresets.length">
+                <div class="mb-8px text-13px">{{ $t('page.farm.settings.devicePresets') }}</div>
+                <NSpace wrap>
+                  <NButton
+                    v-for="preset in devicePresets"
+                    :key="preset.id"
+                    size="small"
+                    :type="selectedPresetId === preset.id ? 'primary' : 'default'"
+                    :title="preset.description"
+                    @click="applyDevicePreset(preset.id)"
+                  >
+                    {{ preset.name }}
+                  </NButton>
+                </NSpace>
+              </div>
+
+              <NForm label-placement="top" label-width="auto">
+                <NFormItem :label="$t('page.farm.settings.serverUrl')">
+                  <NInput v-model:value="localSystemConfig.serverUrl" placeholder="wss://..." />
+                </NFormItem>
+
+                <div class="grid gap-16px md:grid-cols-2">
+                  <NFormItem :label="$t('page.farm.settings.timeZone')">
+                    <NSelect v-model:value="localSystemConfig.timeZone" class="w-full" :options="timeZoneOptions" />
+                  </NFormItem>
+
+                  <NFormItem :label="$t('page.farm.settings.platform')">
+                    <NSpace wrap>
+                      <NButton
+                        v-for="option in platformOptions"
+                        :key="option.value"
+                        size="small"
+                        :type="localSystemConfig.platform === option.value ? 'primary' : 'default'"
+                        @click="localSystemConfig.platform = option.value"
+                      >
+                        {{ option.label }}
+                      </NButton>
+                    </NSpace>
+                  </NFormItem>
+
+                  <NFormItem :label="$t('page.farm.settings.deviceOs')">
+                    <NSpace wrap>
+                      <NButton
+                        v-for="option in osOptions"
+                        :key="option.value"
+                        size="small"
+                        :type="localSystemConfig.deviceInfo.os === option.value ? 'primary' : 'default'"
+                        @click="
+                          localSystemConfig.deviceInfo.os = option.value;
+                          localSystemConfig.os = option.value;
+                        "
+                      >
+                        {{ option.label }}
+                      </NButton>
+                    </NSpace>
+                  </NFormItem>
+                </div>
+
+                <div class="grid gap-16px md:grid-cols-2">
+                  <NFormItem :label="$t('page.farm.settings.clientVersion')">
+                    <NInput v-model:value="localSystemConfig.deviceInfo.clientVersion" />
+                  </NFormItem>
+                  <NFormItem :label="$t('page.farm.settings.sysSoftware')">
+                    <NInput v-model:value="localSystemConfig.deviceInfo.sysSoftware" />
+                  </NFormItem>
+                  <NFormItem :label="$t('page.farm.settings.deviceId')">
+                    <NInput v-model:value="localSystemConfig.deviceInfo.deviceId" />
+                  </NFormItem>
+                  <NFormItem :label="$t('page.farm.settings.memory')">
+                    <NInput v-model:value="localSystemConfig.deviceInfo.memory" />
+                  </NFormItem>
+                  <NFormItem :label="$t('page.farm.settings.network')">
+                    <NInput v-model:value="localSystemConfig.deviceInfo.network" />
+                  </NFormItem>
+                </div>
+
+                <NFormItem :label="$t('page.farm.settings.userAgent')">
+                  <NInput v-model:value="localSystemConfig.deviceInfo.userAgent" type="textarea" :rows="3" />
+                </NFormItem>
+              </NForm>
+
+              <NSpace>
+                <NButton type="primary" :loading="systemConfigSaving" @click="handleSaveSystemConfig">
+                  {{ $t('page.farm.settings.saveRuntimeEnv') }}
+                </NButton>
+                <NButton :loading="systemConfigSaving" @click="handleResetSystemConfig">
+                  {{ $t('page.farm.settings.resetRuntimeEnv') }}
+                </NButton>
+              </NSpace>
+            </div>
+          </NSpin>
         </NCard>
       </NTabPane>
     </NTabs>

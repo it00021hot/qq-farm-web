@@ -96,6 +96,15 @@ declare namespace Api {
       vip_gift?: boolean;
       month_card?: boolean;
       open_server_gift?: boolean;
+      mystery_shop_auto_buy?: boolean;
+      mystery_shop_arrival_notify?: boolean;
+      mystery_shop_purchase_notify?: boolean;
+      mystery_shop_allow_gold?: boolean;
+      mystery_shop_allow_coupon?: boolean;
+      mystery_shop_allow_gold_bean?: boolean;
+      mystery_shop_allow_diamond?: boolean;
+      /** 自动通过好友申请（默认开） */
+      friend_auto_accept?: boolean;
     };
 
     type IntervalsConfig = {
@@ -112,6 +121,7 @@ declare namespace Api {
       enabled?: boolean;
       start?: string;
       end?: string;
+      continueFarm?: boolean;
     };
 
     type AccountAutomationDetail = {
@@ -128,6 +138,12 @@ declare namespace Api {
       friendQuietHours?: QuietHoursConfig;
       friendBlacklist?: number[];
       plantBlacklist?: number[];
+      friendAutoAccept?: boolean;
+      autoAcceptFriendMinLevel?: number;
+      autoAcceptRequireOwnLevel?: boolean;
+      autoAcceptHarvestStealEnabled?: boolean;
+      autoAcceptHarvestStealHarvest?: number;
+      autoAcceptHarvestStealSteal?: number;
       fertilizerBuyOrganicCount?: number;
       fertilizerBuyOrganicThresholdHours?: number;
       fertilizerBuyNormalCount?: number;
@@ -150,6 +166,12 @@ declare namespace Api {
       friendQuietHours?: QuietHoursConfig;
       friendBlacklist?: number[];
       plantBlacklist?: number[];
+      friendAutoAccept?: boolean;
+      autoAcceptFriendMinLevel?: number;
+      autoAcceptRequireOwnLevel?: boolean;
+      autoAcceptHarvestStealEnabled?: boolean;
+      autoAcceptHarvestStealHarvest?: number;
+      autoAcceptHarvestStealSteal?: number;
       fertilizerBuyOrganicCount?: number;
       fertilizerBuyOrganicThresholdHours?: number;
       fertilizerBuyNormalCount?: number;
@@ -200,6 +222,10 @@ declare namespace Api {
       gold?: number;
       avatar?: string;
       syncedAt?: number;
+      /** 好友宠物状态：protect=护主犬 / other=其他宠物 / unknown=待确认 */
+      petState?: 'protect' | 'other' | 'unknown' | string;
+      /** 好友宠物信息（petState=other 时展示名称） */
+      pet?: { id?: number; name?: string; image?: string } | null;
       plant?: {
         stealNum?: number;
         dryNum?: number;
@@ -294,6 +320,15 @@ declare namespace Api {
       plantSize?: number;
       occupiedByMaster?: boolean;
       occupiedLandIds?: number[];
+      matureAt?: number;
+    };
+
+    type Career = {
+      gid: number;
+      harvest: number;
+      steal: number;
+      level: number;
+      name: string;
     };
 
     type LandSummary = {
@@ -309,6 +344,7 @@ declare namespace Api {
     type LandsResponse = {
       lands: LandRow[];
       summary: LandSummary;
+      career?: Career | null;
     };
 
     type OperateParams = {
@@ -460,6 +496,64 @@ declare namespace Api {
       attemptable?: boolean;
       availabilityKnown?: boolean;
       attemptableCount?: number;
+    };
+
+    type SystemConfigPayload = {
+      serverUrl?: string;
+      clientVersion: string;
+      platform?: string;
+      os?: string;
+      timeZone?: string;
+      deviceInfo: {
+        os?: string;
+        sysSoftware?: string;
+        network?: string;
+        memory?: string;
+        deviceId?: string;
+        userAgent?: string;
+        clientVersion?: string;
+      };
+    };
+
+    type QqBotBinding = {
+      userOpenid: string;
+      boundAt?: number;
+      nickname?: string;
+    };
+
+    type OfflineReminder = {
+      provider: 'none' | 'qq_bot' | 'wechat_bot' | 'ding_talk';
+      qqBot: {
+        appId: string;
+        clientSecret: string;
+      };
+      qqBotBinding: QqBotBinding;
+      wechatBot: Record<string, never>;
+      title: string;
+      msg: string;
+      offlineDeleteSec: number;
+      endpoint?: string;
+      token?: string;
+      secret?: string;
+    };
+
+    type QqBotBindStatus = {
+      credentialsConfigured: boolean;
+      bound: boolean;
+      binding: QqBotBinding;
+      botInviteUrl: string;
+    };
+
+    type QqBotBindStart = {
+      sessionId: string;
+      botInviteUrl: string;
+      qrDataUrl: string;
+      expiresAt: number;
+    };
+
+    type QqBotBindPoll = {
+      status: 'pending' | 'bound' | 'expired';
+      binding?: QqBotBinding | null;
     };
 
     type ActivitySnapshot = {

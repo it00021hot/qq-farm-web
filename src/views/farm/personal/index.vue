@@ -75,6 +75,15 @@ onMounted(async () => {
         <NTabPane name="task" :tab="$t('page.farm.personal.tabTask')">
           <TaskPanel ref="taskPanelRef" :connected="connected" />
         </NTabPane>
+        <NTabPane name="pet" :tab="$t('page.farm.personal.tabPet')">
+          <PetPanel ref="petPanelRef" />
+        </NTabPane>
+        <NTabPane name="illustrated" :tab="$t('page.farm.personal.tabIllustrated')">
+          <IllustratedPanel ref="illustratedPanelRef" />
+        </NTabPane>
+        <NTabPane name="interaction" :tab="$t('page.farm.personal.tabInteraction')">
+          <InteractionItemsPanel ref="interactionPanelRef" />
+        </NTabPane>
       </NTabs>
     </template>
   </div>

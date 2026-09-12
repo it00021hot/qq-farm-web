@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import InteractionItemsPanel from '../personal/InteractionItemsPanel.vue';
+import LandCountdown from '../shared/LandCountdown.vue';
 import {
   NAvatar,
   NButton,
   NCard,
   NEmpty,
   NInput,
+  NPagination,
   NPopconfirm,
   NSpace,
   NSpin,
@@ -15,6 +18,7 @@ import {
   useMessage
 } from 'naive-ui';
 import {
+  fetchDeleteFarmFriend,
   fetchFarmFriendOp,
   fetchGetFarmAutomationDetail,
   fetchGetFarmFriendInteractRecords,
@@ -23,9 +27,9 @@ import {
   fetchModifyFarmAutomation
 } from '@/service/api';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
-import { useAuth } from '@/hooks/business/auth';
 import { useFarmWs } from '@/hooks/business/farm-ws';
 import { resolveCatalogImage } from '@/views/farm/game-config/shared';
+import { formatCareerCount, formatCareerStealRatio } from '@/views/farm/shared/career';
 import {
   landCardClass,
   landGridStyle,
@@ -43,8 +47,9 @@ defineOptions({
 type FriendOp = 'steal' | 'help' | 'bad';
 type TabKey = 'friends' | 'blacklist' | 'visitors';
 
+const FRIEND_PAGE_SIZE = 25;
+
 const farmAccountStore = useFarmAccountStore();
-const { hasAuth } = useAuth();
 const message = useMessage();
 
 const activeTab = ref<TabKey>('friends');
@@ -54,18 +59,23 @@ const interactError = ref('');
 const opLoadingKey = ref<string | null>(null);
 const stealAllLoading = ref(false);
 const blacklistLoading = ref(false);
+// 对齐 bot 好友页懒加载：记录各页签已完成加载的账号，避免重复请求
+const friendsLoadedAccount = ref(0);
+const blacklistLoadedAccount = ref(0);
+const interactLoadedAccount = ref(0);
+const deletingGid = ref<number | null>(null);
 const friends = ref<Api.Farm.Friend[]>([]);
+const friendCareers = ref<Record<number, Api.Farm.Career | null>>({});
 const friendBlacklist = ref<number[]>([]);
 const interactRecords = ref<Api.Farm.FriendInteractRecord[]>([]);
 const interactFilter = ref<'all' | 'steal' | 'help' | 'bad'>('all');
 const searchKeyword = ref('');
+const friendPage = ref(1);
 const expandedGid = ref<number | null>(null);
 const friendLands = ref<Record<number, Api.Farm.LandRow[]>>({});
 const friendLandsLoading = ref<Record<number, boolean>>({});
 const avatarErrorKeys = ref<Set<number>>(new Set());
 const interactAvatarErrors = ref<Set<string>>(new Set());
-
-let tickTimer: ReturnType<typeof setInterval> | null = null;
 
 const interactFilters: { key: 'all' | 'steal' | 'help' | 'bad'; labelKey: App.I18n.I18nKey }[] = [
   { key: 'all', labelKey: 'page.farm.friends.filterAll' },
@@ -143,7 +153,39 @@ const filteredFriends = computed(() => {
 
 const normalFriends = computed(() => filteredFriends.value.filter(friend => !isBlacklisted(friend.gid)));
 
+const friendTotalPages = computed(() => Math.ceil(normalFriends.value.length / FRIEND_PAGE_SIZE) || 1);
+
+const pagedNormalFriends = computed(() => {
+  const start = (friendPage.value - 1) * FRIEND_PAGE_SIZE;
+  return normalFriends.value.slice(start, start + FRIEND_PAGE_SIZE);
+});
+
+const friendPageRange = computed(() => {
+  const total = normalFriends.value.length;
+  if (!total) return { start: 0, end: 0, total };
+  const start = (friendPage.value - 1) * FRIEND_PAGE_SIZE + 1;
+  const end = Math.min(total, friendPage.value * FRIEND_PAGE_SIZE);
+  return { start, end, total };
+});
+
+watch(searchKeyword, () => {
+  friendPage.value = 1;
+});
+
+watch(friendTotalPages, total => {
+  if (friendPage.value > total) friendPage.value = total;
+});
+
 const stealableFriends = computed(() => normalFriends.value.filter(friend => canStealFriend(friend)));
+
+/** 宠物状态今日已确认数（other 含「没有上场狗」这一结论）。
+ * 分母须与同步口径一致：每日宠物同步不会去黑名单好友农场确认，
+ * 把黑名单算进总数会让进度永远不满（2026-09-11 实测 48/67 卡住的 19 个
+ * 全是黑名单/失效 GID，被同步排除却占着分母） */
+const petSyncScope = computed(() => friends.value.filter(friend => !isBlacklisted(friend.gid)));
+const petKnownCount = computed(
+  () => petSyncScope.value.filter(friend => friend.petState === 'protect' || friend.petState === 'other').length
+);
 
 const blacklistFriends = computed(() => {
   const byGid = new Map(friends.value.map(f => [Number(f.gid), f]));
@@ -178,14 +220,20 @@ const visibleInteractRecords = computed(() => {
   return list.filter(item => Number(item.actionType) === want);
 });
 
-async function loadBlacklist() {
+async function loadBlacklist(opts?: { force?: boolean }) {
   if (!farmAccountStore.currentAccountId) {
     friendBlacklist.value = [];
+    blacklistLoadedAccount.value = 0;
+    return;
+  }
+  // 对齐 bot 好友页懒加载：每账号只拉一次，切账号重置，手动刷新强制重拉
+  if (!opts?.force && blacklistLoadedAccount.value === farmAccountStore.currentAccountId) {
     return;
   }
   const { error, data } = await fetchGetFarmAutomationDetail(farmAccountStore.currentAccountId);
   if (!error && data) {
     friendBlacklist.value = (data.friendBlacklist || []).map(Number).filter(Boolean);
+    blacklistLoadedAccount.value = farmAccountStore.currentAccountId;
   }
 }
 
@@ -207,13 +255,14 @@ async function loadFriends(opts?: { force?: boolean }) {
     ]);
     if (!error && data) {
       friends.value = data.records || [];
+      friendsLoadedAccount.value = farmAccountStore.currentAccountId;
     }
   } finally {
     loading.value = false;
   }
 }
 
-/** Manual refresh: bust overlay cache and reload steal bubbles. */
+/** Manual refresh: bust server cache and reload steal bubbles. */
 async function refreshFriendList() {
   await loadFriends({ force: true });
   if (expandedGid.value) {
@@ -221,10 +270,15 @@ async function refreshFriendList() {
   }
 }
 
-async function loadInteractRecords() {
+async function loadInteractRecords(opts?: { force?: boolean }) {
   if (!farmAccountStore.currentAccountId) {
     interactRecords.value = [];
     interactError.value = '';
+    interactLoadedAccount.value = 0;
+    return;
+  }
+  // 对齐 bot 好友页懒加载：已加载过当前账号则跳过
+  if (!opts?.force && interactLoadedAccount.value === farmAccountStore.currentAccountId) {
     return;
   }
   interactLoading.value = true;
@@ -237,6 +291,7 @@ async function loadInteractRecords() {
       return;
     }
     interactRecords.value = data || [];
+    interactLoadedAccount.value = farmAccountStore.currentAccountId;
   } finally {
     interactLoading.value = false;
   }
@@ -292,10 +347,16 @@ async function loadFriendLands(gid: number) {
     if (error) {
       message.error(error.message || $t('page.farm.friends.opFailed'));
       friendLands.value = { ...friendLands.value, [gid]: [] };
+      friendCareers.value = { ...friendCareers.value, [gid]: null };
       return;
     }
     const lands = data?.lands || [];
-    friendLands.value = { ...friendLands.value, [gid]: lands };
+    const now = Math.floor(Date.now() / 1000);
+    friendLands.value = {
+      ...friendLands.value,
+      [gid]: (lands || []).map((land: Api.Farm.LandRow) => ({ ...land, matureAt: now + Number(land.matureInSec || 0) }))
+    };
+    friendCareers.value = { ...friendCareers.value, [gid]: data?.career || null };
     syncFriendPlantFromLands(gid, lands);
   } finally {
     friendLandsLoading.value = { ...friendLandsLoading.value, [gid]: false };
@@ -315,10 +376,10 @@ async function runFriendOp(
   friend: Api.Farm.Friend,
   op: FriendOp,
   event?: MouseEvent,
-  options?: { quiet?: boolean }
+  options?: { quiet?: boolean; onData?: (data: Record<string, unknown>) => void }
 ): Promise<boolean> {
   event?.stopPropagation();
-  if (!farmAccountStore.currentAccountId || !hasAuth('farm-friend:op')) return false;
+  if (!farmAccountStore.currentAccountId) return false;
   const quiet = !!options?.quiet;
   const key = opKey(friend.gid, op);
   opLoadingKey.value = key;
@@ -334,6 +395,7 @@ async function runFriendOp(
     }
     const count = Number(data?.count || 0);
     if (count > 0) {
+      options?.onData?.(data as Record<string, unknown>);
       if (!quiet) {
         const summary = String(data?.summary || data?.helpSummary || '').trim();
         message.success(summary || $t('page.farm.friends.opSuccess'));
@@ -362,7 +424,7 @@ async function runFriendOp(
 }
 
 async function stealAllFriends() {
-  if (!farmAccountStore.currentAccountId || !hasAuth('farm-friend:op') || stealAllLoading.value) return;
+  if (!farmAccountStore.currentAccountId || stealAllLoading.value) return;
   const targets = [...stealableFriends.value];
   if (!targets.length) {
     message.info($t('page.farm.friends.stealAllEmpty'));
@@ -371,13 +433,26 @@ async function stealAllFriends() {
   stealAllLoading.value = true;
   let ok = 0;
   let skip = 0;
+  const totals = new Map<string, number>();
   try {
     for (const friend of targets) {
-      const stolen = await runFriendOp(friend, 'steal', undefined, { quiet: true });
+      const stolen = await runFriendOp(friend, 'steal', undefined, {
+        quiet: true,
+        onData: data => {
+          const items = Array.isArray(data.items) ? (data.items as Array<{ name?: string; count?: number }>) : [];
+          for (const item of items) {
+            const name = String(item?.name || '').trim();
+            if (!name) continue;
+            totals.set(name, (totals.get(name) || 0) + Number(item.count || 0));
+          }
+        }
+      });
       if (stolen) ok += 1;
       else skip += 1;
     }
-    message.success($t('page.farm.friends.stealAllDone', { ok, skip }));
+    const done = $t('page.farm.friends.stealAllDone', { ok, skip });
+    const detail = [...totals.entries()].map(([name, n]) => `${name}×${n}`).join('、');
+    message.success(detail ? `${done}：${detail}` : done);
   } finally {
     stealAllLoading.value = false;
   }
@@ -405,23 +480,43 @@ async function toggleBlacklist(friend: Api.Farm.Friend, event?: MouseEvent) {
   }
 }
 
+/** 游戏内删除好友（后端会同时加入黑名单，不再自动互动）。 */
+async function deleteFriend(friend: Api.Farm.Friend) {
+  if (!farmAccountStore.currentAccountId) return;
+  deletingGid.value = Number(friend.gid);
+  try {
+    const { error } = await fetchDeleteFarmFriend(farmAccountStore.currentAccountId, friend.gid);
+    if (error) {
+      message.error(error.message || $t('page.farm.friends.deleteFailed'));
+      return;
+    }
+    friends.value = friends.value.filter(item => Number(item.gid) !== Number(friend.gid));
+    if (expandedGid.value === Number(friend.gid)) expandedGid.value = null;
+    message.success($t('page.farm.friends.deleteSuccess', { name: friend.nickname || friend.gid }));
+    // 后端同时把该好友加入黑名单，强制重拉
+    await loadBlacklist({ force: true });
+  } finally {
+    deletingGid.value = null;
+  }
+}
+
+/**
+ * 好友宠物徽标（后端 petState / pet 字段缺失时不展示）。
+ * `unknown`（今天还没同步到）不展示徽标：每日宠物同步在后台按节奏补齐，
+ * 逐行显示「待确认」只是噪音；整体进度见工具栏的同步提示。
+ */
+function petBadge(friend: Api.Farm.Friend): { kind: 'protect' | 'name'; label: string } | null {
+  const petName = String(friend.pet?.name || '').trim();
+  if (friend.petState === 'protect') return { kind: 'protect', label: '护主犬' };
+  if (friend.petState === 'other') {
+    if (petName) return { kind: 'name', label: petName };
+    if (friend.pet) return { kind: 'name', label: '宠物' };
+  }
+  return null;
+}
+
 function landImageSrc(land: Api.Farm.LandRow) {
   return resolveCatalogImage(land.seedImage);
-}
-
-function formatDuration(sec: number) {
-  if (sec <= 0) return '';
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  return `${h > 0 ? `${h}:` : ''}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function growProgress(land: Api.Farm.LandRow) {
-  const mature = Number(land.matureInSec || 0);
-  const total = Number(land.totalGrowTime || 0);
-  if (total <= 0) return 0;
-  return Math.max(0, Math.min(100, Math.round(((total - mature) / total) * 100)));
 }
 
 function displayFriendLands(gid: number) {
@@ -491,29 +586,14 @@ function formatInteractTime(timestamp?: number) {
   });
 }
 
-function startTick() {
-  stopTick();
-  tickTimer = setInterval(() => {
-    const next: Record<number, Api.Farm.LandRow[]> = {};
-    for (const [gid, lands] of Object.entries(friendLands.value)) {
-      next[Number(gid)] = (lands || []).map(land => {
-        if (!land.matureInSec || land.matureInSec <= 0) return land;
-        return { ...land, matureInSec: Math.max(0, land.matureInSec - 1) };
-      });
-    }
-    friendLands.value = next;
-  }, 1000);
-}
+// 倒计时由 LandCountdown 共享时钟渲染，不再整表重建
+function startTick() {}
 
-function stopTick() {
-  if (tickTimer) {
-    clearInterval(tickTimer);
-    tickTimer = null;
-  }
-}
+function stopTick() {}
 
 watch(activeTab, tab => {
   if (tab === 'visitors') void loadInteractRecords();
+  else if (tab === 'blacklist') void loadBlacklist();
 });
 
 watch(
@@ -521,8 +601,14 @@ watch(
   async () => {
     expandedGid.value = null;
     friendLands.value = {};
+    friendPage.value = 1;
+    // 切账号重置懒加载标记，各页签重新拉取
+    friendsLoadedAccount.value = 0;
+    blacklistLoadedAccount.value = 0;
+    interactLoadedAccount.value = 0;
     await loadFriends();
     if (activeTab.value === 'visitors') await loadInteractRecords();
+    else if (activeTab.value === 'blacklist') await loadBlacklist();
   }
 );
 
@@ -550,12 +636,12 @@ function scheduleFriendListRefresh(gid?: number) {
   if (listRefreshTimer) clearTimeout(listRefreshTimer);
   listRefreshTimer = setTimeout(() => {
     listRefreshTimer = null;
-    void loadFriends();
+    void loadFriends({ force: false });
     if (expandedGid.value) void loadFriendLands(expandedGid.value);
   }, 800);
 }
 
-const { connect } = useFarmWs({
+useFarmWs({
   onMessage(type, payload, raw) {
     const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
     const accountId = Number(body.accountId || raw?.accountId || 0);
@@ -581,6 +667,22 @@ const { connect } = useFarmWs({
       if ((action.includes('steal') || action === '偷菜') && result !== 'error') {
         scheduleFriendListRefresh(gid);
       }
+      return;
+    }
+
+    if (
+      type === 'log' ||
+      type === 'log:new' ||
+      type === 'account_log' ||
+      type === 'account-log:new' ||
+      type === 'worker_log'
+    ) {
+      const msg = String(body.message || '');
+      const event = String(body.event || '');
+      const gid = Number(body.friendGid || body.targetGid || 0);
+      if (event === 'visit_friend' || /偷\d/.test(msg) || msg.includes('偷菜')) {
+        scheduleFriendListRefresh(gid);
+      }
     }
   }
 });
@@ -591,7 +693,6 @@ onMounted(async () => {
   }
   await loadFriends();
   startTick();
-  connect();
 });
 
 onUnmounted(() => {
@@ -621,10 +722,22 @@ onUnmounted(() => {
             />
             <NSpace align="center">
               <span class="text-12px text-gray-500">
-                {{ $t('page.farm.friends.friendCount', { shown: normalFriends.length, total: friends.length }) }}
+                {{
+                  $t('page.farm.friends.friendPageCount', {
+                    start: friendPageRange.start,
+                    end: friendPageRange.end,
+                    total: friends.length
+                  })
+                }}
               </span>
+              <NPagination
+                v-if="friendTotalPages > 1"
+                v-model:page="friendPage"
+                :page-count="friendTotalPages"
+                size="small"
+                :page-slot="5"
+              />
               <NButton
-                v-if="hasAuth('farm-friend:op')"
                 size="small"
                 type="primary"
                 ghost
@@ -640,11 +753,20 @@ onUnmounted(() => {
             </NSpace>
           </div>
 
+          <div v-if="petSyncScope.length && petKnownCount < petSyncScope.length" class="mb-8px text-12px text-gray-400">
+            {{
+              $t('page.farm.friends.petSyncProgress', {
+                known: petKnownCount,
+                total: petSyncScope.length
+              })
+            }}
+          </div>
+
           <NSpin :show="loading">
             <NEmpty v-if="!normalFriends.length" class="py-32px" :description="$t('common.noData')" />
             <div v-else class="flex-col gap-12px">
               <div
-                v-for="friend in normalFriends"
+                v-for="friend in pagedNormalFriends"
                 :key="friend.gid"
                 class="overflow-hidden border border-gray-200 rounded-8px dark:border-gray-700"
               >
@@ -668,6 +790,21 @@ onUnmounted(() => {
                       </div>
                       <div class="mt-4px flex flex-wrap items-center gap-8px text-12px">
                         <NTag v-if="friend.level" size="tiny" :bordered="false">Lv{{ friend.level }}</NTag>
+                        <NTag v-if="petBadge(friend)?.kind === 'protect'" size="tiny" type="success" :bordered="false">
+                          🐕 {{ petBadge(friend)?.label }}
+                        </NTag>
+                        <span
+                          v-else-if="petBadge(friend)?.kind === 'name'"
+                          class="flex-y-center gap-4px rounded-4px bg-gray-100 px-6px py-2px text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                        >
+                          <img
+                            v-if="resolveCatalogImage(friend.pet?.image)"
+                            :src="resolveCatalogImage(friend.pet?.image)"
+                            class="h-14px w-14px object-contain"
+                            loading="lazy"
+                          />
+                          {{ petBadge(friend)?.label }}
+                        </span>
                         <span
                           class="rounded-4px bg-amber-50 px-6px py-2px text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
                         >
@@ -684,41 +821,34 @@ onUnmounted(() => {
                   </div>
 
                   <div class="flex flex-wrap gap-8px" @click.stop>
-                    <template v-if="hasAuth('farm-friend:op')">
-                      <NButton
-                        v-if="canStealFriend(friend)"
-                        size="small"
-                        type="primary"
-                        ghost
-                        :loading="opLoadingKey === opKey(friend.gid, 'steal')"
-                        @click="runFriendOp(friend, 'steal', $event)"
-                      >
-                        {{ $t('page.farm.friends.steal') }}
-                      </NButton>
-                      <NButton
-                        v-if="canHelpFriend(friend)"
-                        size="small"
-                        type="info"
-                        ghost
-                        :loading="opLoadingKey === opKey(friend.gid, 'help')"
-                        @click="runFriendOp(friend, 'help', $event)"
-                      >
-                        {{ $t('page.farm.friends.help') }}
-                      </NButton>
-                      <NPopconfirm @positive-click="runFriendOp(friend, 'bad')">
-                        <template #trigger>
-                          <NButton
-                            size="small"
-                            type="warning"
-                            ghost
-                            :loading="opLoadingKey === opKey(friend.gid, 'bad')"
-                          >
-                            {{ $t('page.farm.friends.bad') }}
-                          </NButton>
-                        </template>
-                        {{ $t('page.farm.friends.opConfirm') }}
-                      </NPopconfirm>
-                    </template>
+                    <NButton
+                      v-if="canStealFriend(friend)"
+                      size="small"
+                      type="primary"
+                      ghost
+                      :loading="opLoadingKey === opKey(friend.gid, 'steal')"
+                      @click="runFriendOp(friend, 'steal', $event)"
+                    >
+                      {{ $t('page.farm.friends.steal') }}
+                    </NButton>
+                    <NButton
+                      v-if="canHelpFriend(friend)"
+                      size="small"
+                      type="info"
+                      ghost
+                      :loading="opLoadingKey === opKey(friend.gid, 'help')"
+                      @click="runFriendOp(friend, 'help', $event)"
+                    >
+                      {{ $t('page.farm.friends.help') }}
+                    </NButton>
+                    <NPopconfirm @positive-click="runFriendOp(friend, 'bad')">
+                      <template #trigger>
+                        <NButton size="small" type="warning" ghost :loading="opLoadingKey === opKey(friend.gid, 'bad')">
+                          {{ $t('page.farm.friends.bad') }}
+                        </NButton>
+                      </template>
+                      {{ $t('page.farm.friends.opConfirm') }}
+                    </NPopconfirm>
                     <NPopconfirm @positive-click="toggleBlacklist(friend)">
                       <template #trigger>
                         <NButton size="small" quaternary :loading="blacklistLoading">
@@ -727,6 +857,14 @@ onUnmounted(() => {
                       </template>
                       {{ $t('page.farm.friends.blacklistConfirm', { name: friend.nickname || friend.gid }) }}
                     </NPopconfirm>
+                    <NPopconfirm @positive-click="deleteFriend(friend)">
+                      <template #trigger>
+                        <NButton size="small" type="error" quaternary :loading="deletingGid === Number(friend.gid)">
+                          {{ $t('page.farm.friends.deleteFriend') }}
+                        </NButton>
+                      </template>
+                      {{ $t('page.farm.friends.deleteConfirm') }}
+                    </NPopconfirm>
                   </div>
                 </div>
 
@@ -734,6 +872,24 @@ onUnmounted(() => {
                   v-if="expandedGid === friend.gid"
                   class="border-t border-gray-200 bg-gray-50 p-12px dark:border-gray-700 dark:bg-gray-900/40"
                 >
+                  <div
+                    v-if="friendCareers[friend.gid]"
+                    class="mb-10px flex flex-wrap items-center gap-12px rounded-8px bg-white px-12px py-8px text-13px dark:bg-gray-800/60"
+                  >
+                    <span class="text-gray-500">{{ $t('page.farm.personal.careerTitle') }}</span>
+                    <span>
+                      {{ $t('page.farm.personal.careerHarvest') }}
+                      <strong class="font-semibold">{{ formatCareerCount(friendCareers[friend.gid]?.harvest) }}</strong>
+                    </span>
+                    <span>
+                      {{ $t('page.farm.personal.careerSteal') }}
+                      <strong class="font-semibold">{{ formatCareerCount(friendCareers[friend.gid]?.steal) }}</strong>
+                    </span>
+                    <span>
+                      {{ $t('page.farm.personal.careerRatio') }}
+                      <strong class="font-semibold">{{ formatCareerStealRatio(friendCareers[friend.gid]) }}</strong>
+                    </span>
+                  </div>
                   <NSpin :show="friendLandsLoading[friend.gid]">
                     <NEmpty
                       v-if="!friendLandsLoading[friend.gid] && !displayFriendLands(friend.gid).length"
@@ -744,7 +900,8 @@ onUnmounted(() => {
                       <div
                         v-for="land in displayFriendLands(friend.gid)"
                         :key="land.id"
-                        :class="landCardClass(land, { compact: true })"
+                        class="cv-auto"
+                        :class="[landCardClass(land, { compact: true })]"
                         :style="landGridStyle(land)"
                       >
                         <div class="flex-y-center justify-between gap-4px">
@@ -765,19 +922,12 @@ onUnmounted(() => {
                         <div class="truncate text-center text-12px font-medium" :title="land.plantName">
                           {{ land.plantName || '-' }}
                         </div>
-                        <div class="text-center text-12px opacity-70">
-                          <span v-if="land.matureInSec && land.matureInSec > 0" class="text-orange-500">
-                            {{ formatDuration(land.matureInSec) }}
-                          </span>
-                          <span v-else>{{ land.phaseName || '-' }}</span>
-                        </div>
-                        <div
-                          v-if="land.matureInSec && land.matureInSec > 0 && land.totalGrowTime"
-                          class="farm-progress"
-                          :class="soilLevelClass(land.level)"
-                        >
-                          <div class="farm-progress-fill" :style="{ width: `${growProgress(land)}%` }" />
-                        </div>
+                        <LandCountdown
+                          :at="land.matureAt || 0"
+                          :total="land.totalGrowTime || 0"
+                          :level="land.level"
+                          :phase="land.phaseName"
+                        />
                         <div class="flex-center flex-wrap gap-4px">
                           <span
                             v-if="soilLabel(land.level)"
@@ -804,9 +954,16 @@ onUnmounted(() => {
                   </NSpin>
                 </div>
               </div>
+              <div v-if="friendTotalPages > 1" class="mt-4px flex flex-wrap items-center justify-center gap-12px">
+                <NPagination v-model:page="friendPage" :page-count="friendTotalPages" size="small" :page-slot="5" />
+              </div>
             </div>
           </NSpin>
         </NCard>
+      </NTabPane>
+
+      <NTabPane name="interaction" :tab="$t('page.farm.personal.tabInteraction')">
+        <InteractionItemsPanel mode="friend" />
       </NTabPane>
 
       <NTabPane name="blacklist">
@@ -882,7 +1039,7 @@ onUnmounted(() => {
                 {{ $t(item.labelKey) }}
               </NButton>
             </div>
-            <NButton size="small" :loading="interactLoading" @click="loadInteractRecords">
+            <NButton size="small" :loading="interactLoading" @click="loadInteractRecords({ force: true })">
               {{ $t('common.refresh') }}
             </NButton>
           </div>

@@ -616,3 +616,145 @@ export function fetchGetFarmDiamond(accountId: number) {
     params: { accountId }
   });
 }
+
+export type SystemConfigPayload = Api.Farm.SystemConfigPayload;
+
+/** ========== 宠物（护主犬）面板 ========== */
+export function fetchGetPetInfo(accountId: number) {
+  return request<any>({ url: '/farm/pets/dog-info', method: 'get', params: { accountId } });
+}
+
+export function fetchPetDeploy(accountId: number, dogId: number) {
+  return request<any>({
+    url: '/farm/pets/dog-op',
+    method: 'post',
+    data: { accountId, op: 'deploy', dogId: Number(dogId) }
+  });
+}
+
+export function fetchPetWithdraw(accountId: number) {
+  return request<any>({ url: '/farm/pets/dog-op', method: 'post', data: { accountId, op: 'withdraw' } });
+}
+
+export function fetchPetFoodUse(accountId: number, itemId: number, count: number) {
+  return request<any>({
+    url: '/farm/pets/dog-op',
+    method: 'post',
+    data: { accountId, op: 'addFood', itemId: Number(itemId), count: Number(count) }
+  });
+}
+
+export function fetchGetPetProtectLogs(accountId: number) {
+  return request<any>({ url: '/farm/pets/protect-logs', method: 'get', params: { accountId } });
+}
+
+// 同气连枝礼包状态：dog-info 的 pendingGiftCount 映射为 rust 面板的 { pending }
+export async function fetchGetDogSkillGifts(accountId: number) {
+  const res = await fetchGetPetInfo(accountId);
+  const pending = Number((res.data as any)?.pendingGiftCount ?? 0);
+  return { ...res, data: { pending } };
+}
+
+export function fetchClaimDogSkillGifts(accountId: number) {
+  return request<any>({
+    url: '/farm/pets/dog-op',
+    method: 'post',
+    data: { accountId, op: 'claimSkillGifts' }
+  });
+}
+
+/** ========== 图鉴 ========== */
+export function fetchGetIllustratedSnapshot(accountId: number) {
+  return request<any>({ url: '/farm/illustrated/snapshot', method: 'get', params: { accountId } });
+}
+
+/** ========== 互动道具（好友 / 自己农场） ========== */
+export function fetchGetFriendInteractionItems(accountId: number) {
+  return request<any>({ url: '/farm/friend/interaction-items', method: 'get', params: { accountId } });
+}
+
+export function fetchUseFriendInteractionItems(
+  accountId: number,
+  friendGid: number,
+  itemId: number,
+  landIds: number[]
+) {
+  return request<any>({
+    url: '/farm/friend/interaction-use',
+    method: 'post',
+    data: { accountId, friendGid: Number(friendGid), itemId: Number(itemId), landIds: landIds.map(Number) }
+  });
+}
+
+export function fetchGetFarmInteractionItems(accountId: number) {
+  return request<any>({ url: '/farm/interaction-items/self', method: 'get', params: { accountId } });
+}
+
+export function fetchUseFarmInteractionItems(accountId: number, itemId: number, landIds: number[]) {
+  return request<any>({
+    url: '/farm/friend/interaction-use',
+    method: 'post',
+    data: { accountId, itemId: Number(itemId), landIds: landIds.map(Number) }
+  });
+}
+
+/** ========== 好友：游戏内删除 ========== */
+export function fetchDeleteFarmFriend(accountId: number, gid: number | string) {
+  return request<any>({
+    url: '/farm/friend/delete',
+    method: 'post',
+    data: { accountId, gid: String(gid) }
+  });
+}
+
+/** ========== 设置：化肥立即检测补购 ========== */
+export function fetchFertilizerCheckAndBuy(accountId: number) {
+  return request<any>({ url: '/farm/fertilizer/check-buy', method: 'post', data: { accountId } });
+}
+
+/** ========== 设置：系统配置 ========== */
+export function fetchGetSystemConfig() {
+  return request<any>({ url: '/farm/system-config', method: 'get' });
+}
+
+export function fetchSetSystemConfig(cfg: Api.Farm.SystemConfigPayload) {
+  return request<any>({ url: '/farm/system-config/save', method: 'post', data: cfg });
+}
+
+export function fetchResetSystemConfig() {
+  return request<any>({ url: '/farm/system-config/reset', method: 'post' });
+}
+
+export function fetchGetDevicePresets() {
+  return request<any[]>({ url: '/farm/system-config/device-presets', method: 'get' });
+}
+
+/** ========== 设置：离线提醒 ========== */
+export function fetchGetOfflineReminder() {
+  return request<Api.Farm.OfflineReminder>({ url: '/farm/offline-reminder', method: 'get' });
+}
+
+export function fetchSaveOfflineReminder(cfg: Api.Farm.OfflineReminder) {
+  return request<any>({ url: '/farm/offline-reminder/save', method: 'post', data: cfg });
+}
+
+export function fetchTestOfflineReminder(cfg: Api.Farm.OfflineReminder) {
+  return request<any>({ url: '/farm/offline-reminder/test', method: 'post', data: cfg });
+}
+
+/** ========== 设置：QQ 机器人绑定 ========== */
+export function fetchGetQqBotBindStatus() {
+  return request<any>({ url: '/farm/system/qqbot/bind', method: 'get' });
+}
+
+export function fetchStartQqBotBind() {
+  return request<any>({ url: '/farm/system/qqbot/bind/start', method: 'post' });
+}
+
+export function fetchPollQqBotBind(sessionId: string) {
+  return request<any>({ url: '/farm/system/qqbot/bind/poll', method: 'get', params: { sessionId } });
+}
+
+export function fetchUnbindQqBot() {
+  return request<any>({ url: '/farm/system/qqbot/bind/unbind', method: 'post' });
+}
