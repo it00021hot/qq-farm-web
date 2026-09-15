@@ -674,7 +674,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-500px flex-col-stretch gap-16px overflow-auto">
+  <div class="h-full min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
     <div class="flex-y-center justify-between">
       <h2 class="text-18px font-medium">{{ $t('page.farm.dashboard.title') }}</h2>
       <NSpace>
@@ -811,8 +811,13 @@ onUnmounted(() => {
       </NGrid>
     </NSpin>
 
-    <div class="grid gap-16px md:grid-cols-[minmax(0,1fr)_280px]">
-      <NCard :bordered="false" size="small" class="card-wrapper">
+    <div class="flex min-h-0 flex-1 flex-col items-stretch gap-16px md:flex-row">
+      <NCard
+        :bordered="false"
+        size="small"
+        class="log-card card-wrapper min-h-0 flex-1 overflow-hidden"
+        content-class="log-card-body"
+      >
         <template #header>
           <div class="flex flex-wrap items-center justify-between gap-8px">
             <span>{{ $t('page.farm.dashboard.runningLogs') }}</span>
@@ -833,7 +838,8 @@ onUnmounted(() => {
         </template>
         <div
           ref="logContainer"
-          class="h-300px overflow-y-auto rounded-8px bg-gray-50 p-12px font-mono text-13px dark:bg-gray-900"
+          class="log-scroll-area overflow-y-auto rounded-8px bg-gray-50 p-12px font-mono text-13px dark:bg-gray-900"
+          :class="{ 'flex-center': !filteredLogs.length }"
           @scroll="onLogScroll"
         >
           <div v-if="!filteredLogs.length" class="py-32px text-center text-gray-400">
@@ -863,7 +869,7 @@ onUnmounted(() => {
         </div>
       </NCard>
 
-      <div class="flex-col gap-16px">
+      <div class="flex w-full min-h-0 flex-col gap-16px md:w-280px">
         <NCard :title="$t('page.farm.dashboard.nextChecksTitle')" :bordered="false" size="small" class="card-wrapper">
           <div class="flex-col gap-12px">
             <div class="flex-y-center justify-between">
@@ -890,7 +896,12 @@ onUnmounted(() => {
           </div>
         </NCard>
 
-        <NCard :title="$t('page.farm.dashboard.todayStats')" :bordered="false" size="small" class="card-wrapper">
+        <NCard
+          :title="$t('page.farm.dashboard.todayStats')"
+          :bordered="false"
+          size="small"
+          class="stats-card card-wrapper min-h-0 flex-1"
+        >
           <div v-if="!isOnline" class="py-24px text-center text-gray-400">
             <div class="mb-8px text-28px">📡</div>
             <div>{{ $t('page.farm.dashboard.accountOffline') }}</div>
@@ -914,3 +925,45 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 对齐 rust desktop-ui dashboard：日志卡弹性填充视口剩余高度，底部不留空白。 */
+.log-scroll-area {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.log-card {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.log-card :deep(.n-card-header) {
+  flex-shrink: 0;
+}
+
+.log-card :deep(.n-card__content),
+.log-card :deep(.log-card-body) {
+  display: flex !important;
+  flex: 1 1 0 !important;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.stats-card :deep(.n-card__content) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+</style>

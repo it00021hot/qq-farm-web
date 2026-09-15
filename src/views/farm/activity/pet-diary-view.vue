@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   NButton,
   NCard,
@@ -436,8 +436,19 @@ function switchLogKind(kind: 'interact' | 'plunder') {
   loadLogs();
 }
 
+// 护送中的宝藏到点后状态会变化（护送中 → 待领取），
+// 每 60 秒静默刷新一次快照，避免到点后按钮一直灰着需要手动刷新。
+let autoRefreshTimer: ReturnType<typeof setInterval> | undefined;
+
 onMounted(() => {
   loadSnapshot();
+  autoRefreshTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') void loadSnapshot(false);
+  }, 60_000);
+});
+
+onBeforeUnmount(() => {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
 });
 
 watch(

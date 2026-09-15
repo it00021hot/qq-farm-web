@@ -550,24 +550,9 @@ export function fetchCreateFarmWxQuickLoginSession() {
   });
 }
 
-export function fetchDetectFarmWxQuickLogin(sessionId: string) {
-  return request<Api.Farm.WxQuickDetectResult>({
-    url: `/farm/wx-login/quick-tasks/${sessionId}/detect`,
-    method: 'post'
-  });
-}
-
-export function fetchAuthorizeFarmWxQuickLogin(
-  sessionId: string,
-  data: { port: number; authorize_uuid: string; x: number; y: number }
-) {
-  return request<Api.Farm.WxQuickAuthorizeResult>({
-    url: `/farm/wx-login/quick-tasks/${sessionId}/authorize`,
-    method: 'post',
-    data
-  });
-}
-
+// 本机微信探测/授权由前端浏览器直连 https://localhost.weixin.qq.com:<port>
+// （对齐 YYB-Go-Enhanced scan.html；微信本地服务按 TLS 指纹过滤客户端，
+// 仅浏览器可通过，后端代理会被直接断开），后端只负责 confirm 换 code。
 export function fetchConfirmFarmWxQuickLogin(sessionId: string, redirectUrl: string) {
   return request<Api.Farm.WxLoginCodeResult>({
     url: `/farm/wx-login/quick-tasks/${sessionId}/confirm`,
@@ -629,6 +614,15 @@ export function fetchPetDeploy(accountId: number, dogId: number) {
     url: '/farm/pets/dog-op',
     method: 'post',
     data: { accountId, op: 'deploy', dogId: Number(dogId) }
+  });
+}
+
+// 宠物激活（bot 9907ffd）：消耗背包宠物卡，把图鉴项变成可上场的已获得宠物
+export function fetchPetActivate(accountId: number, dogId: number) {
+  return request<any>({
+    url: '/farm/pets/dog-op',
+    method: 'post',
+    data: { accountId, op: 'activate', dogId: Number(dogId) }
   });
 }
 

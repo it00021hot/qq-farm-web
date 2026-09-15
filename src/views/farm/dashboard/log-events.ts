@@ -37,6 +37,9 @@ const EVENT_LABELS: Record<string, string> = {
   enter_farm: '进入农场',
   care_friend: '照顾好友',
   patrol_done: '巡查完成',
+  // Go 端好友动作细分事件（rust 在 visit/care 条目内聚合，Go 独立成条）
+  steal_score: '偷取积分',
+  bad_action: '放虫放草',
   avatar_probe: '人机头像诊断',
   visitor_gid_backfill: '访客补充好友GID',
   bad_action_limit: '放虫放草次数上限',

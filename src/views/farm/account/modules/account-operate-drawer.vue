@@ -3,12 +3,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { farmEnableStatusOptions, farmPlatformOptions, translateStringOptions } from '@/constants/business';
 import {
   fetchAddFarmAccount,
-  fetchAuthorizeFarmWxQuickLogin,
   fetchConfirmFarmWxLogin,
   fetchConfirmFarmWxQuickLogin,
   fetchCreateFarmWxLoginTask,
   fetchCreateFarmWxQuickLoginSession,
-  fetchDetectFarmWxQuickLogin,
   fetchFarmWxLoginCode,
   fetchFarmWxLoginStatus,
   fetchModifyFarmAccount,
@@ -61,6 +59,9 @@ const wxTaskId = ref('');
 const wxSessionId = ref('');
 const wxQuickPort = ref<number | null>(null);
 const wxQuickProfile = ref<{ authorizeUuid?: string; nickname?: string; headimgurl?: string } | null>(null);
+const wxQuickOAuth = ref<{ appid: string; scope: string; redirect_uri: string; state: string; ports: number[] } | null>(
+  null
+);
 const wxStatus = ref('');
 const wxError = ref('');
 const wxLoading = ref(false);
@@ -192,6 +193,7 @@ function resetWxLogin() {
   wxSessionId.value = '';
   wxQuickPort.value = null;
   wxQuickProfile.value = null;
+  wxQuickOAuth.value = null;
   wxStatus.value = '';
   wxError.value = '';
   wxQrUrl.value = '';
@@ -288,6 +290,60 @@ async function getWxCodeAndSave() {
   await saveWxCode(String(data.code));
 }
 
+// 本机微信本地 API（对齐 YYB-Go-Enhanced scan.html）：浏览器直连
+// https://localhost.weixin.qq.com:<port>，微信本地服务按 TLS 指纹过滤客户端，
+// 仅浏览器可通过；响应可能是 JSON 字符串再包一层，需二次解析。
+interface LocalWechatPayload {
+  errcode: number;
+  jsdata: Record<string, any>;
+}
+
+function parseLocalWechatResponse(text: string): LocalWechatPayload {
+  const raw = text.trim();
+  if (!raw) throw new Error('本机微信返回空响应');
+  let value: any;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new Error('本机微信返回了无法解析的响应');
+  }
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      throw new Error('本机微信返回了无法解析的响应');
+    }
+  }
+  return { errcode: Number(value?.errcode ?? 0), jsdata: value?.jsdata ?? {} };
+}
+
+async function localWechatFetch(
+  port: number,
+  path: string,
+  body: unknown,
+  timeoutMs = 3000
+): Promise<LocalWechatPayload> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`https://localhost.weixin.qq.com:${port}${path}`, {
+      method: 'post',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`本机微信 HTTP ${response.status}（端口 ${port}）`);
+    return parseLocalWechatResponse(await response.text());
+  } catch (err: any) {
+    if (err?.name === 'AbortError') throw new Error(`连接本机微信超时（端口 ${port}）`, { cause: err });
+    if (String(err?.message || '').includes('本机微信')) throw err;
+    throw new Error(`连接本机微信失败（端口 ${port}）`, { cause: err });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function detectLocalWechat() {
   wxLoading.value = true;
   wxError.value = '';
@@ -300,22 +356,52 @@ async function detectLocalWechat() {
       throw new Error((error as any)?.message || '创建快速授权会话失败');
     }
     wxSessionId.value = String(data.session_id);
-    const detected = await fetchDetectFarmWxQuickLogin(wxSessionId.value);
-    if (detected.error || !detected.data?.authorize_uuid) {
-      throw new Error((detected.error as any)?.message || '未检测到可用的桌面微信');
+    wxQuickOAuth.value = {
+      appid: data.appid,
+      scope: data.scope,
+      redirect_uri: data.redirect_uri,
+      state: data.state,
+      ports: Array.isArray(data.ports) ? data.ports : []
+    };
+    const probes = await Promise.all(
+      wxQuickOAuth.value.ports.map(async port => {
+        try {
+          const payload = await localWechatFetch(port, '/api/check-login', {
+            apiname: 'qrconnectchecklogin',
+            jsdata: {
+              appid: data.appid,
+              scope: data.scope,
+              redirect_uri: data.redirect_uri,
+              state: data.state
+            }
+          });
+          return { port, payload };
+        } catch {
+          return null;
+        }
+      })
+    );
+    const match = probes.find(
+      item => item && item.payload.errcode === 0 && String(item.payload.jsdata?.authorize_uuid ?? '').trim() !== ''
+    );
+    if (!match) {
+      throw new Error('未检测到可用的桌面微信（请确认 Windows 桌面微信已登录且未锁定）');
     }
-    wxQuickPort.value = Number(detected.data.port);
+    wxQuickPort.value = match.port;
     wxQuickProfile.value = {
-      authorizeUuid: String(detected.data.authorize_uuid),
-      nickname: detected.data.nickname,
-      headimgurl: detected.data.headimgurl
+      authorizeUuid: String(match.payload.jsdata.authorize_uuid),
+      nickname: match.payload.jsdata.nickname,
+      headimgurl: match.payload.jsdata.headimgurl
     };
     wxStatus.value = wxQuickProfile.value.nickname
       ? `${wxQuickProfile.value.nickname} · 请在电脑微信中确认`
       : '本机微信已就绪，请点击授权';
   } catch (err: any) {
+    // 微信 4.0（Weixin.exe）已封锁本机快速授权：非浏览器客户端 TLS 握手被直接
+    // 断开，浏览器侧 CORS 也仅放行 weixin.qq.com 系页面（实测 2026-09）。
+    // 检测失败自动回退扫码登录。
     wxError.value = err?.message || '本机微信不可用';
-    wxStatus.value = '本机快速授权不可用，已切换到扫码';
+    wxStatus.value = '微信 4.0 已不支持本机快速授权，已自动切换到扫码登录';
     wxMode.value = 'qr';
     void startWxLogin();
   } finally {
@@ -326,7 +412,8 @@ async function detectLocalWechat() {
 async function authorizeLocalWechat() {
   const port = wxQuickPort.value;
   const profile = wxQuickProfile.value;
-  if (!port || !profile?.authorizeUuid || !wxSessionId.value) {
+  const oauth = wxQuickOAuth.value;
+  if (!port || !profile?.authorizeUuid || !wxSessionId.value || !oauth) {
     wxError.value = '请先检测本机微信';
     return;
   }
@@ -335,21 +422,34 @@ async function authorizeLocalWechat() {
   wxStatus.value = '等待电脑微信确认...';
   try {
     const pos = authorizePosition();
-    const authorized = await fetchAuthorizeFarmWxQuickLogin(wxSessionId.value, {
+    const payload = await localWechatFetch(
       port,
-      authorize_uuid: profile.authorizeUuid,
-      x: pos.x,
-      y: pos.y
-    });
-    if (authorized.error || !authorized.data?.redirect_url) {
-      const message = (authorized.error as any)?.message || '桌面微信未返回有效授权结果';
-      if (String(message).includes('仅支持扫码授权')) {
-        wxMode.value = 'qr';
-        void startWxLogin();
-      }
-      throw new Error(message);
+      '/api/authorize',
+      {
+        apiname: 'qrconnectfastauthorize',
+        jsdata: {
+          data: JSON.stringify(pos),
+          appid: oauth.appid,
+          scope: oauth.scope,
+          redirect_uri: oauth.redirect_uri,
+          state: oauth.state,
+          authorize_uuid: profile.authorizeUuid
+        }
+      },
+      120_000
+    );
+    const errcode = Number(payload.errcode);
+    if (errcode === 10050) throw new Error('已在微信中拒绝授权，请重新检测');
+    if (errcode === 10046) throw new Error('授权已超时，请重新检测');
+    if (errcode === 10057) {
+      wxMode.value = 'qr';
+      void startWxLogin();
+      throw new Error('当前应用仅支持扫码授权');
     }
-    const redirectUrl = String(authorized.data.redirect_url);
+    const redirectUrl = String(payload.jsdata?.redirect_url ?? '').trim();
+    if (errcode !== 0 || !redirectUrl) {
+      throw new Error('桌面微信未返回有效授权结果，请重新检测');
+    }
     const { data, error } = await fetchConfirmFarmWxQuickLogin(wxSessionId.value, redirectUrl);
     if (error || !data?.code) {
       throw new Error((error as any)?.message || '快速授权确认失败');

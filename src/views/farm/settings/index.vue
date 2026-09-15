@@ -142,6 +142,8 @@ const plantingStrategy = ref('bag_priority');
 const preferredSeedId = ref<number | null>(0);
 const bagSeedPriority = ref<number[]>([29003, 20129, 21380, 20108, 26032]);
 const bagSeedFallbackStrategy = ref('preferred');
+// 多格种子未来布局预留（bot bagSeedMultiLandReservationEnabled，默认关）
+const bagSeedMultiLandReservation = ref(false);
 const plantOrderRandom = ref(true);
 const plantDelaySeconds = ref(2);
 const stealDelaySeconds = ref(1);
@@ -644,6 +646,7 @@ function applyDetail(data: Api.Farm.AccountAutomationDetail) {
   preferredSeedId.value = data.preferredSeedId ?? 0;
   bagSeedPriority.value = [...(data.bagSeedPriority || [])];
   bagSeedFallbackStrategy.value = data.bagSeedFallbackStrategy || 'preferred';
+  bagSeedMultiLandReservation.value = !!data.bagSeedMultiLandReservation;
   plantOrderRandom.value = !!data.plantOrderRandom;
   plantDelaySeconds.value = data.plantDelaySeconds ?? 0;
   stealDelaySeconds.value = data.stealDelaySeconds ?? 1;
@@ -694,6 +697,7 @@ async function handleSaveStrategy() {
       preferredSeedId: preferredSeedId.value ?? 0,
       bagSeedPriority: priority,
       bagSeedFallbackStrategy: bagSeedFallbackStrategy.value,
+      bagSeedMultiLandReservation: bagSeedMultiLandReservation.value,
       plantOrderRandom: plantOrderRandom.value,
       plantDelaySeconds: plantDelaySeconds.value,
       stealDelaySeconds: stealDelaySeconds.value,
@@ -795,12 +799,17 @@ async function loadSystemConfig() {
 function applyDevicePreset(presetId: string) {
   const preset = devicePresets.value.find(item => item.id === presetId);
   if (!preset) return;
+  const current = localSystemConfig.value;
+  // 版本号不属于设备指纹：预设不带版本时保留当前值，避免切预设清空版本号
+  const keepVersion =
+    preset.deviceInfo?.clientVersion || current.deviceInfo?.clientVersion || current.clientVersion || '';
   const deviceInfo = {
     ...createDefaultSystemConfig().deviceInfo,
-    ...preset.deviceInfo
+    ...preset.deviceInfo,
+    clientVersion: keepVersion
   } as SystemConfigPayload['deviceInfo'];
   localSystemConfig.value = {
-    ...localSystemConfig.value,
+    ...current,
     os: deviceInfo.os || 'Windows',
     clientVersion: deviceInfo.clientVersion || '',
     deviceInfo
@@ -1172,6 +1181,18 @@ onUnmounted(() => {
                   :options="bagFallbackStrategyOptions"
                   @update:value="handleBagFallbackStrategyChange"
                 />
+              </NFormItem>
+
+              <NFormItem>
+                <template #label>
+                  <NTooltip trigger="hover">
+                    <template #trigger>
+                      <span class="cursor-help">{{ $t('page.farm.settings.bagSeedMultiLandReservation') }}</span>
+                    </template>
+                    {{ $t('page.farm.settings.bagSeedMultiLandReservationHint') }}
+                  </NTooltip>
+                </template>
+                <NSwitch v-model:value="bagSeedMultiLandReservation" />
               </NFormItem>
 
               <div

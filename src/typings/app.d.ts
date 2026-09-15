@@ -688,6 +688,8 @@ declare namespace App {
               onDuty: string;
               owned: string;
               locked: string;
+              activate: string;
+              activateSuccess: string;
               deploy: string;
               deploySuccess: string;
               withdraw: string;
@@ -1228,6 +1230,8 @@ declare namespace App {
             bagSeedPriority: string;
             bagSeedPriorityPlaceholder: string;
             bagSeedFallback: string;
+            bagSeedMultiLandReservation: string;
+            bagSeedMultiLandReservationHint: string;
             strategyPreferred: string;
             strategyLevel: string;
             strategyMaxExp: string;

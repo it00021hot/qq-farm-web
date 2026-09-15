@@ -448,6 +448,8 @@ const local: App.I18n.Schema = {
           onDuty: '看家中',
           owned: '已获得',
           locked: '未获得',
+          activate: '激活',
+          activateSuccess: '宠物激活成功',
           deploy: '上场',
           deploySuccess: '宠物上场成功',
           withdraw: '收回',
@@ -991,6 +993,9 @@ const local: App.I18n.Schema = {
         bagSeedPriority: '背包种子优先级',
         bagSeedPriorityPlaceholder: '多个种子 ID 用逗号分隔，靠前优先',
         bagSeedFallback: '第二优先策略',
+        bagSeedMultiLandReservation: '多格种子预留空地',
+        bagSeedMultiLandReservationHint:
+          '高优先级的多格种子暂时凑不齐完整布局时，预留当前已空出的相关地块，避免被低优先级种子占掉（默认关闭）',
         strategyPreferred: '优先种植种子',
         strategyLevel: '最高等级作物',
         strategyMaxExp: '最大经验/时',

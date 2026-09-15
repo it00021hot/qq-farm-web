@@ -22,6 +22,7 @@ import {
   fetchGetDogSkillGifts,
   fetchGetPetInfo,
   fetchGetPetProtectLogs,
+  fetchPetActivate,
   fetchPetDeploy,
   fetchPetFoodUse,
   fetchPetWithdraw
@@ -69,6 +70,16 @@ async function deploy(dogId: number) {
   if (!error) {
     window.$message?.success($t('page.farm.personal.pet.deploySuccess'));
     await load();
+  }
+}
+
+async function activate(dogId: number) {
+  if (!farmAccountStore.currentAccountId) return;
+  const { error } = await fetchPetActivate(farmAccountStore.currentAccountId, dogId);
+  if (!error) {
+    window.$message?.success($t('page.farm.personal.pet.activateSuccess'));
+    await load();
+    emit('refresh');
   }
 }
 
@@ -178,9 +189,14 @@ void load();
                   {{ dog.skillDescription }}
                 </NTooltip>
               </div>
-              <NButton v-if="dog.owned && !dog.active" size="tiny" type="primary" @click="deploy(dog.id)">
-                {{ $t('page.farm.personal.pet.deploy') }}
-              </NButton>
+              <NSpace :size="4" :wrap="false">
+                <NButton v-if="dog.activatable && !dog.owned" size="tiny" type="warning" @click="activate(dog.id)">
+                  {{ $t('page.farm.personal.pet.activate') }}
+                </NButton>
+                <NButton v-if="dog.owned && !dog.active" size="tiny" type="primary" @click="deploy(dog.id)">
+                  {{ $t('page.farm.personal.pet.deploy') }}
+                </NButton>
+              </NSpace>
             </div>
           </NListItem>
         </NList>

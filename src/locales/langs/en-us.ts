@@ -452,6 +452,8 @@ const local: App.I18n.Schema = {
           onDuty: 'On Duty',
           owned: 'Owned',
           locked: 'Locked',
+          activate: 'Activate',
+          activateSuccess: 'Pet activated',
           deploy: 'Deploy',
           deploySuccess: 'Pet deployed',
           withdraw: 'Withdraw',
@@ -996,6 +998,9 @@ const local: App.I18n.Schema = {
         bagSeedPriority: 'Bag Seed Priority',
         bagSeedPriorityPlaceholder: 'Comma-separated seed IDs, earlier = higher priority',
         bagSeedFallback: 'Secondary Strategy',
+        bagSeedMultiLandReservation: 'Reserve lands for multi-plot seeds',
+        bagSeedMultiLandReservationHint:
+          'When a high-priority multi-plot bag seed cannot form a full layout yet, reserve its currently empty lands so lower-priority seeds cannot take them (off by default)',
         strategyPreferred: 'Preferred Seed',
         strategyLevel: 'Highest Level Crop',
         strategyMaxExp: 'Max Exp/h',
