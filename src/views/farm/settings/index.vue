@@ -192,7 +192,6 @@ const offline = reactive<Api.Farm.OfflineReminder>({
   wechatBot: {},
   title: '账号下线提醒',
   msg: '账号下线',
-  offlineDeleteSec: 0,
   endpoint: '',
   token: '',
   secret: ''
@@ -849,7 +848,6 @@ function applyOffline(data: Api.Farm.OfflineReminder) {
   };
   offline.title = data.title || '';
   offline.msg = data.msg || '';
-  offline.offlineDeleteSec = Number(data.offlineDeleteSec || 0);
   offline.endpoint = data.endpoint || '';
   offline.token = data.token || '';
   offline.secret = data.secret || '';
@@ -977,7 +975,6 @@ function offlinePayload(): Api.Farm.OfflineReminder {
     wechatBot: {},
     title: offline.title || '',
     msg: offline.msg || '',
-    offlineDeleteSec: Number(offline.offlineDeleteSec || 0),
     endpoint: offline.endpoint || '',
     token: offline.token || '',
     secret: offline.secret || ''

@@ -344,7 +344,7 @@ const local: App.I18n.Schema = {
           none: 'None',
           normal: 'Normal fertilizer only',
           organic: 'Organic fertilizer only',
-          both: 'Normal + Organic',
+          both: 'Inorganic once + organic to mature',
           smart: 'Normal + fast-mature organic'
         },
         platform: {
@@ -374,6 +374,7 @@ const local: App.I18n.Schema = {
         nextCheckSteal: 'Next steal',
         nextChecksTitle: 'Next check countdown',
         checkingNow: 'Checking…',
+        quietLabel: 'Quiet',
         accountOffline: 'Not logged in',
         notLoggedIn: 'Not logged in',
         online: 'Online',

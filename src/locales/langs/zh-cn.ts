@@ -340,7 +340,7 @@ const local: App.I18n.Schema = {
           none: '不施肥',
           normal: '仅普通化肥',
           organic: '仅有机化肥',
-          both: '普通 + 有机',
+          both: '无机一次 + 有机催熟',
           smart: '普通 + 快成熟有机'
         },
         platform: {
@@ -370,6 +370,7 @@ const local: App.I18n.Schema = {
         nextCheckSteal: '下次偷菜',
         nextChecksTitle: '下次巡查倒计时',
         checkingNow: '巡查中…',
+        quietLabel: '静默中',
         accountOffline: '账号未登录',
         notLoggedIn: '未登录',
         online: '在线',

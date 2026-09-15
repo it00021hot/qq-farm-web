@@ -16,10 +16,12 @@ import {
 import { useAppStore } from '@/store/modules/app';
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useAuth } from '@/hooks/business/auth';
+import { useFarmWs } from '@/hooks/business/farm-ws';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
 import { $t } from '@/locales';
 import AccountOperateDrawer from './modules/account-operate-drawer.vue';
 import AccountSearch from './modules/account-search.vue';
+import MobileRecordList from '@/components/advanced/mobile-record-list.vue';
 
 defineOptions({
   name: 'FarmAccount'
@@ -137,12 +139,26 @@ const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagi
             </NButton>
           )}
           {hasAuth('farm-account:start') && row.runStatus !== 1 && (
-            <NButton type="success" ghost size="small" onClick={() => handleStart(row.id)}>
+            <NButton
+              type="success"
+              ghost
+              size="small"
+              loading={isStarting(row.id)}
+              disabled={isStarting(row.id)}
+              onClick={() => handleStart(row.id)}
+            >
               {$t('page.farm.account.start')}
             </NButton>
           )}
           {hasAuth('farm-account:stop') && row.runStatus === 1 && (
-            <NButton type="warning" ghost size="small" onClick={() => handleStop(row.id)}>
+            <NButton
+              type="warning"
+              ghost
+              size="small"
+              loading={isStopping(row.id)}
+              disabled={isStopping(row.id)}
+              onClick={() => handleStop(row.id)}
+            >
               {$t('page.farm.account.stop')}
             </NButton>
           )}
@@ -178,19 +194,43 @@ function edit(id: number) {
   handleEdit(id);
 }
 
+// 启停防连点：后端有幂等守卫，但连点会排队多次生命周期操作，前端也拦一道
+const startingIds = ref<number[]>([]);
+const stoppingIds = ref<number[]>([]);
+
+function isStarting(id: number) {
+  return startingIds.value.includes(id);
+}
+
+function isStopping(id: number) {
+  return stoppingIds.value.includes(id);
+}
+
 async function handleStart(id: number) {
-  const { error } = await fetchStartFarmAccount(id);
-  if (!error) {
-    window.$message?.success($t('common.updateSuccess'));
-    await getDataByPage();
+  if (isStarting(id)) return;
+  startingIds.value.push(id);
+  try {
+    const { error } = await fetchStartFarmAccount(id);
+    if (!error) {
+      window.$message?.success($t('common.updateSuccess'));
+      await getDataByPage();
+    }
+  } finally {
+    startingIds.value = startingIds.value.filter(v => v !== id);
   }
 }
 
 async function handleStop(id: number) {
-  const { error } = await fetchStopFarmAccount(id);
-  if (!error) {
-    window.$message?.success($t('common.updateSuccess'));
-    await getDataByPage();
+  if (isStopping(id)) return;
+  stoppingIds.value.push(id);
+  try {
+    const { error } = await fetchStopFarmAccount(id);
+    if (!error) {
+      window.$message?.success($t('common.updateSuccess'));
+      await getDataByPage();
+    }
+  } finally {
+    stoppingIds.value = stoppingIds.value.filter(v => v !== id);
   }
 }
 
@@ -202,6 +242,22 @@ async function handleDelete(id: number) {
   }
 }
 
+async function handleBatchDelete() {
+  if (!checkedRowKeys.value.length) return;
+  const selectedIds = checkedRowKeys.value.map(Number);
+  const selected = data.value.filter(row => selectedIds.includes(row.id));
+  let deletedCount = 0;
+  for (const row of selected) {
+    const { error } = await fetchDeleteFarmAccount(row.id);
+    if (!error) deletedCount += 1;
+  }
+  checkedRowKeys.value = [];
+  if (deletedCount) {
+    window.$message?.success($t('common.deleteSuccess'));
+    await refreshList(searchParams.value.current || 1);
+  }
+}
+
 async function refreshList(page: number = 1) {
   await getDataByPage(page);
   void farmAccountStore.loadAccounts();
@@ -209,6 +265,22 @@ async function refreshList(page: number = 1) {
 
 onMounted(async () => {
   await refreshList();
+});
+
+// WS 实时同步：账号状态变化自动刷新列表；授权失效（wxAuthorized=false）也刷新提示用户
+useFarmWs({
+  onMessage(type, payload) {
+    if (type === 'account_status') {
+      void refreshList(searchParams.value.current || 1);
+      return;
+    }
+    if (type === 'status:update') {
+      const body = payload as { status?: { wxAuthorized?: boolean } };
+      if (body?.status?.wxAuthorized === false) {
+        void refreshList(searchParams.value.current || 1);
+      }
+    }
+  }
 });
 </script>
 
@@ -222,6 +294,7 @@ onMounted(async () => {
           :disabled-delete="checkedRowKeys.length === 0"
           :loading="loading"
           @add="onAdd"
+          @delete="handleBatchDelete"
           @refresh="() => refreshList()"
         >
           <template #default>
@@ -234,7 +307,18 @@ onMounted(async () => {
           </template>
         </TableHeaderOperation>
       </template>
+      <MobileRecordList
+        v-if="appStore.isMobile"
+        v-model:checked-row-keys="checkedRowKeys"
+        :columns="columns"
+        :data="data"
+        :row-key="row => row.id"
+        :primary-keys="['name', 'platform', 'runStatus', 'wxAuthorized']"
+        :pagination="mobilePagination"
+        :loading="loading"
+      />
       <NDataTable
+        v-else
         v-model:checked-row-keys="checkedRowKeys"
         :columns="columns"
         :data="data"

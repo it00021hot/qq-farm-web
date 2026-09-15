@@ -245,7 +245,13 @@ async function saveWxCode(codeInput: string) {
       if (modifyError) {
         throw new Error((modifyError as any)?.message || '更新账号失败');
       }
-      window.$message?.success($t('common.updateSuccess'));
+      // 后端刷新 code 时也会自动重启账号，但对已停止账号这是双保险
+      const { error: startError } = await fetchStartFarmAccount(model.value.id);
+      if (startError) {
+        window.$message?.warning($t('common.updateSuccess') + '，自动启动失败，请手动重新登录');
+      } else {
+        window.$message?.success($t('common.updateSuccess') + '，已自动启动');
+      }
     } else {
       const { data: added, error: addError } = await fetchAddFarmAccount({
         name,

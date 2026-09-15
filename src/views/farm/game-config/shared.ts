@@ -68,3 +68,5 @@ export const growPhaseTemplates = [
   { label: '12小时 (6阶段)', value: '种子:7200;发芽:7200;小叶子:7200;大叶子:7200;开花:7200;成熟:0;' },
   { label: '24小时 (6阶段)', value: '种子:14400;发芽:14400;小叶子:14400;大叶子:14400;开花:14400;成熟:0;' }
 ];
+
+export type GameConfigTab = 'seeds' | 'fruits' | 'items';

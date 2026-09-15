@@ -1,6 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { NButton, NCard, NEmpty, NInputNumber, NModal, NProgress, NSpace, NSpin, NTag, useMessage } from 'naive-ui';
+import {
+  NCollapse,
+  NCollapseItem,
+  NButton,
+  NCard,
+  NEmpty,
+  NInputNumber,
+  NModal,
+  NProgress,
+  NSpace,
+  NSpin,
+  NTag,
+  useMessage
+} from 'naive-ui';
 import {
   fetchClaimFarmActivityCharityDailyGift,
   fetchClaimFarmActivityCharityProgressReward,
@@ -143,6 +156,7 @@ type GreenPlum = {
     grantId?: string;
     reward?: RewardItem;
   };
+  rules?: unknown;
   actions?: {
     claimSeed?: { enabled?: boolean; available?: boolean };
     start?: { enabled?: boolean; available?: boolean };
@@ -253,6 +267,7 @@ const constellationGroups = computed(() => {
 });
 const passRules = computed(() => normalizeActivityRules(pass.value.rules));
 const constellationRules = computed(() => normalizeActivityRules(constellation.value.rules));
+const greenPlumRules = computed(() => normalizeActivityRules(greenPlum.value.rules));
 const selectedConstellation = computed(
   () => constellationGroups.value.find(g => g.id === selectedConstellationId.value) || null
 );
@@ -1836,6 +1851,18 @@ onUnmounted(() => {
               </div>
             </template>
           </div>
+
+          <NCollapse v-if="greenPlumRules" class="mt-16px" :default-expanded-names="['rules']">
+            <NCollapseItem :title="greenPlumRules.title || $t('page.farm.activity.qixiRules')" name="rules">
+              <p
+                v-for="(paragraph, index) in greenPlumRules.paragraphs"
+                :key="index"
+                class="mb-8px whitespace-pre-line text-13px leading-relaxed"
+              >
+                {{ paragraph }}
+              </p>
+            </NCollapseItem>
+          </NCollapse>
         </NCard>
       </NSpin>
     </template>

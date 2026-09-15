@@ -140,7 +140,7 @@ async function handleSell(item: Api.Farm.BagItem) {
   }
   sellingId.value = item.id;
   try {
-    const { error } = await fetchSellFarmBag({
+    const { error, data } = await fetchSellFarmBag({
       accountId: farmAccountStore.currentAccountId,
       items: sellItems
     });
@@ -148,7 +148,8 @@ async function handleSell(item: Api.Farm.BagItem) {
       message.error(error.message || $t('page.farm.personal.sellFailed'));
       return;
     }
-    message.success($t('page.farm.personal.sellSuccess'));
+    const summary = String(data?.summary || '').trim();
+    message.success(summary || $t('page.farm.personal.sellSuccess'));
     await loadBag();
   } finally {
     sellingId.value = null;
@@ -159,16 +160,18 @@ async function handleUse(item: Api.Farm.BagItem) {
   if (!farmAccountStore.currentAccountId) return;
   usingId.value = item.id;
   try {
-    const { error } = await fetchUseFarmBag({
+    // 对齐 rust：每次使用 1 个（礼包类服务端按单个结算）
+    const { error, data } = await fetchUseFarmBag({
       accountId: farmAccountStore.currentAccountId,
       itemId: item.id,
-      count: Math.max(1, Number(item.count || 1))
+      count: 1
     });
     if (error) {
       message.error(error.message || $t('page.farm.personal.useFailed'));
       return;
     }
-    message.success($t('page.farm.personal.useSuccess'));
+    const summary = String(data?.summary || '').trim();
+    message.success(summary || $t('page.farm.personal.useSuccess'));
     await loadBag();
   } finally {
     usingId.value = null;
@@ -189,7 +192,7 @@ async function handleBatchSell() {
   }
   batchSelling.value = true;
   try {
-    const { error } = await fetchSellFarmBag({
+    const { error, data } = await fetchSellFarmBag({
       accountId: farmAccountStore.currentAccountId,
       items: sellItems
     });
@@ -197,7 +200,8 @@ async function handleBatchSell() {
       message.error(error.message || $t('page.farm.personal.sellFailed'));
       return;
     }
-    message.success($t('page.farm.personal.batchSellSuccess'));
+    const summary = String(data?.summary || '').trim();
+    message.success(summary || $t('page.farm.personal.batchSellSuccess'));
     selectedIds.value = new Set();
     batchMode.value = false;
     await loadBag();
@@ -331,12 +335,19 @@ defineExpose({ refresh: loadBag });
               {{ canSell(item) ? '可出售' : item.sellStatus === 'conditional' ? '条件出售' : '不可出售' }}
             </span>
           </div>
+          <div
+            v-if="(item.mutantEffects || []).length"
+            class="mt-2px text-center text-11px text-amber-600 dark:text-amber-400"
+          >
+            变异: {{ (item.mutantEffects || []).join('+') }}
+          </div>
           <div class="mt-4px text-center text-14px font-medium">
             {{ item.hoursText || `x${item.count}` }}
           </div>
-          <div v-if="!batchMode" class="mt-8px flex-center gap-6px">
+          <!-- 批量模式只隐藏"出售"；"使用"保持可用，否则不可出售的道具（如同气连枝礼包）会没有任何操作 -->
+          <div v-if="!batchMode || canUse(item)" class="mt-8px flex-center gap-6px">
             <NButton
-              v-if="canSell(item)"
+              v-if="!batchMode && canSell(item)"
               size="tiny"
               type="error"
               ghost

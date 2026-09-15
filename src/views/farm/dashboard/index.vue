@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import { NAvatar, NButton, NCard, NEmpty, NGi, NGrid, NInput, NProgress, NSelect, NSpace, NSpin, NTag } from 'naive-ui';
 import {
@@ -12,6 +12,14 @@ import {
 import { useFarmAccountStore } from '@/store/modules/farm-account';
 import { useFarmWs } from '@/hooks/business/farm-ws';
 import { $t } from '@/locales';
+import {
+  getLogEventLabel,
+  humanizeLogMessage,
+  isHiddenLogEvent,
+  LOG_EVENT_FILTER_OPTIONS,
+  logText,
+  shouldShowEventChip
+} from './log-events';
 
 defineOptions({
   name: 'FarmDashboard'
@@ -23,6 +31,7 @@ interface FarmLogRow {
   time: string;
   tag: string;
   event: string;
+  eventKey: string;
   message: string;
   isWarn: boolean;
 }
@@ -64,6 +73,7 @@ const autoScroll = ref(true);
 let logSeq = 0;
 
 const filterModule = ref('');
+const filterEvent = ref('');
 const filterLevel = ref('');
 const filterKeyword = ref('');
 
@@ -71,6 +81,7 @@ const localFarmRemain = ref(0);
 const localHelpRemain = ref(0);
 const localStealRemain = ref(0);
 const localUptime = ref(0);
+const quietFlags = reactive({ farmQuiet: false, helpQuiet: false, stealQuiet: false });
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 let bagTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -86,6 +97,22 @@ const displayName = computed(() => {
   if (nick && remark && nick !== remark) return `${nick} (${remark})`;
   return nick || remark || $t('page.farm.dashboard.notLoggedIn');
 });
+
+const avatarUrl = computed(() => {
+  const raw = status.value?.avatar || currentAccount.value?.avatar || '';
+  if (!raw) return '';
+  if (raw.startsWith('//')) return `https:${raw}`;
+  return raw;
+});
+
+const avatarFailed = ref(false);
+watch(avatarUrl, () => {
+  avatarFailed.value = false;
+});
+
+const canShowAvatar = computed(() => Boolean(avatarUrl.value) && !avatarFailed.value);
+
+const avatarInitial = computed(() => (displayName.value || '?').slice(0, 1));
 
 const levelProgress = computed(() => status.value?.levelProgress || { current: 0, needed: 0 });
 
@@ -170,6 +197,7 @@ const filteredOperations = computed(() => {
 const filteredLogs = computed(() => {
   const keyword = filterKeyword.value.trim().toLowerCase();
   return logs.value.filter(log => {
+    if (isHiddenLogEvent(log.eventKey, log.event, log.message)) return false;
     if (filterModule.value) {
       const tagMap: Record<string, string[]> = {
         farm: ['农场', '收获', '种植', '施肥', '务农'],
@@ -179,12 +207,23 @@ const filteredLogs = computed(() => {
       const tags = tagMap[filterModule.value] || [];
       if (!tags.some(t => log.tag.includes(t) || log.message.includes(t))) return false;
     }
+    if (filterEvent.value && log.eventKey !== filterEvent.value) return false;
     if (filterLevel.value === 'warn' && !log.isWarn) return false;
     if (filterLevel.value === 'info' && log.isWarn) return false;
     if (keyword && !`${log.message} ${log.tag} ${log.event}`.toLowerCase().includes(keyword)) return false;
     return true;
   });
 });
+
+// 渲染截断：最多渲染 300 条，展开后全量（避免上千条 DOM 拖垮滚动）
+const LOG_RENDER_CAP = 300;
+const logExpanded = ref(false);
+const visibleLogs = computed(() =>
+  logExpanded.value ? filteredLogs.value : filteredLogs.value.slice(-LOG_RENDER_CAP)
+);
+const hiddenLogCount = computed(() =>
+  logExpanded.value ? 0 : Math.max(0, filteredLogs.value.length - LOG_RENDER_CAP)
+);
 
 function formatClock(sec: number): string {
   if (sec <= 0) return '00:00:00';
@@ -219,6 +258,9 @@ function syncNextChecks(next?: Api.Farm.Status['nextChecks']) {
   syncRemain(localFarmRemain, next?.farmRemainSec);
   syncRemain(localHelpRemain, next?.helpRemainSec);
   syncRemain(localStealRemain, next?.stealRemainSec);
+  quietFlags.farmQuiet = next?.farmQuiet === true;
+  quietFlags.helpQuiet = next?.helpQuiet === true;
+  quietFlags.stealQuiet = next?.stealQuiet === true;
 }
 
 function syncUptime(next?: number) {
@@ -236,14 +278,17 @@ function tickCountdowns() {
   if (localStealRemain.value > 0) localStealRemain.value -= 1;
 }
 
-function pushLog(tag: string, message: string, event = '', isWarn = false, ts?: number) {
+function pushLog(tag: string, message: string, event = '', isWarn = false, ts?: number, eventKey = '') {
   const at = ts && ts > 0 ? ts : Date.now();
+  const resolvedEventKey = eventKey || event;
+  if (isHiddenLogEvent(resolvedEventKey, event, message)) return;
   logs.value.push({
     id: ++logSeq,
     ts: at,
     time: dayjs(at).format('HH:mm:ss'),
     tag,
     event,
+    eventKey: resolvedEventKey,
     message,
     isWarn
   });
@@ -257,18 +302,26 @@ function pushLog(tag: string, message: string, event = '', isWarn = false, ts?: 
 
 function applyLogEntries(entries: Api.Farm.LogEntry[]) {
   logSeq = 0;
-  logs.value = (entries || []).map(e => {
-    const at = Number(e.ts) || (e.time ? dayjs(e.time).valueOf() : Date.now());
-    return {
-      id: ++logSeq,
-      ts: at,
-      time: dayjs(at).format('HH:mm:ss'),
-      tag: e.tag || '系统',
-      event: e.meta?.event || '',
-      message: e.msg || '',
-      isWarn: Boolean(e.isWarn)
-    };
-  });
+  const list = [...(entries || [])].sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0));
+  logs.value = list
+    .filter(
+      e =>
+        !isHiddenLogEvent(e.meta?.event || '', getLogEventLabel(e.meta?.event || ''), humanizeLogMessage(e.msg || ''))
+    )
+    .map(e => {
+      const at = Number(e.ts) || (e.time ? dayjs(e.time).valueOf() : Date.now());
+      const eventKey = String(e.meta?.event || '');
+      return {
+        id: ++logSeq,
+        ts: at,
+        time: dayjs(at).format('HH:mm:ss'),
+        tag: e.tag || '系统',
+        event: getLogEventLabel(eventKey),
+        eventKey,
+        message: humanizeLogMessage(e.msg || ''),
+        isWarn: Boolean(e.isWarn)
+      };
+    });
   nextTick(() => {
     if (logContainer.value) {
       logContainer.value.scrollTop = logContainer.value.scrollHeight;
@@ -295,12 +348,14 @@ function formatEventMessage(
   payload: unknown
 ): { tag: string; message: string; event: string; isWarn: boolean } {
   const body = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+  const readable = logText(body);
+  const eventKey = String(body.event || body.action || '');
   // Prefer bot-aligned fields when backend already formats them.
-  if (typeof body.message === 'string' && body.message) {
+  if (readable) {
     return {
       tag: String(body.tag || (body.isWarn ? '错误' : '系统')),
-      event: String(body.event || ''),
-      message: body.message,
+      event: getLogEventLabel(eventKey),
+      message: readable,
       isWarn: Boolean(body.isWarn)
     };
   }
@@ -393,8 +448,8 @@ function formatEventMessage(
     const event = String(body.event || '登录');
     return {
       tag: body.isWarn ? '错误' : String(body.tag || '系统'),
-      event,
-      message: String(body.message || body.msg || ''),
+      event: getLogEventLabel(event),
+      message: humanizeLogMessage(String(body.message || body.msg || '')),
       isWarn: Boolean(body.isWarn)
     };
   }
@@ -524,7 +579,14 @@ const { connected, connect } = useFarmWs({
     if (type === 'account_status') {
       const formatted = formatEventMessage(type, payload);
       if (!current || !accountId || accountId === current) {
-        pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
+        pushLog(
+          formatted.tag,
+          formatted.message,
+          formatted.event,
+          formatted.isWarn,
+          undefined,
+          String(body.event || '')
+        );
       }
       void farmAccountStore.loadAccounts();
       if (accountId && current === accountId) void loadStatus({ silent: true });
@@ -533,16 +595,34 @@ const { connected, connect } = useFarmWs({
 
     if (type === 'runtime_log') {
       if (current && accountId && accountId !== current) return;
+      const rawTs = Number((payload as { ts?: number; time?: number }).ts || (payload as { time?: number }).time || 0);
+      const eventKey = String(body.event || body.action || '');
       const formatted = formatEventMessage(type, payload);
-      pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
+      pushLog(
+        formatted.tag,
+        formatted.message,
+        formatted.event,
+        formatted.isWarn,
+        rawTs > 0 ? rawTs : undefined,
+        eventKey
+      );
       maybeScheduleBagRefresh(formatted);
       return;
     }
 
     if (['farm_operation', 'farm_tick', 'friend_interact'].includes(type)) {
       if (current && accountId && accountId !== current) return;
+      const rawTs = Number((payload as { ts?: number; time?: number }).ts || (payload as { time?: number }).time || 0);
+      const eventKey = String(body.event || body.action || '');
       const formatted = formatEventMessage(type, payload);
-      pushLog(formatted.tag, formatted.message, formatted.event, formatted.isWarn);
+      pushLog(
+        formatted.tag,
+        formatted.message,
+        formatted.event,
+        formatted.isWarn,
+        rawTs > 0 ? rawTs : undefined,
+        eventKey
+      );
       maybeScheduleBagRefresh(formatted);
       // Prefer WS status pushes; only HTTP-refetch when socket is down.
       if ((type === 'farm_tick' || type === 'farm_operation') && !connected.value) {
@@ -617,7 +697,15 @@ onUnmounted(() => {
               <NTag size="small" type="info" :bordered="false">Lv.{{ status?.level ?? 0 }}</NTag>
             </div>
             <div class="mb-12px flex-y-center gap-10px">
-              <NAvatar v-if="status?.avatar" round :size="40" :src="status.avatar" />
+              <NAvatar
+                v-if="canShowAvatar"
+                round
+                :size="40"
+                :src="avatarUrl"
+                :img-props="{ referrerpolicy: 'no-referrer' }"
+                @error="avatarFailed = true"
+              />
+              <NAvatar v-else round :size="40">{{ avatarInitial }}</NAvatar>
               <div class="truncate text-16px font-medium" :title="displayName">{{ displayName }}</div>
             </div>
             <div class="mb-4px flex-y-center justify-between text-12px text-gray-500">
@@ -730,6 +818,7 @@ onUnmounted(() => {
             <span>{{ $t('page.farm.dashboard.runningLogs') }}</span>
             <NSpace size="small">
               <NSelect v-model:value="filterModule" size="small" class="w-100px" :options="MODULE_OPTIONS" />
+              <NSelect v-model:value="filterEvent" size="small" class="w-120px" :options="LOG_EVENT_FILTER_OPTIONS" />
               <NSelect v-model:value="filterLevel" size="small" class="w-100px" :options="LEVEL_OPTIONS" />
               <NInput
                 v-model:value="filterKeyword"
@@ -750,18 +839,26 @@ onUnmounted(() => {
           <div v-if="!filteredLogs.length" class="py-32px text-center text-gray-400">
             {{ $t('page.farm.dashboard.noEvents') }}
           </div>
-          <div v-for="log in filteredLogs" :key="log.id" class="mb-6px break-all">
+          <div v-for="log in visibleLogs" :key="log.id" class="mb-6px break-all">
             <span class="mr-8px text-gray-400">[{{ log.time }}]</span>
             <span class="mr-8px rounded-full px-6px py-1px text-11px font-bold" :class="getLogTagClass(log.tag)">
               {{ log.tag }}
             </span>
             <span
-              v-if="log.event"
+              v-if="shouldShowEventChip(log.tag, log.event)"
               class="mr-8px rounded-full bg-blue-50 px-6px py-1px text-11px text-blue-500 dark:bg-blue-900/20"
             >
-              {{ log.event }}
+              {{ getLogEventLabel(log.event) }}
             </span>
             <span :class="log.isWarn ? 'text-error' : ''">{{ log.message }}</span>
+          </div>
+          <div v-if="hiddenLogCount > 0" class="mt-8px text-center">
+            <NButton size="tiny" quaternary type="primary" @click="logExpanded = true">
+              显示更早的 {{ hiddenLogCount }} 条日志
+            </NButton>
+          </div>
+          <div v-else-if="logExpanded && filteredLogs.length > LOG_RENDER_CAP" class="mt-8px text-center">
+            <NButton size="tiny" quaternary @click="logExpanded = false">收起</NButton>
           </div>
         </div>
       </NCard>
@@ -771,15 +868,24 @@ onUnmounted(() => {
           <div class="flex-col gap-12px">
             <div class="flex-y-center justify-between">
               <span>🌱 {{ $t('page.farm.dashboard.nextCheckFarm') }}</span>
-              <span class="font-mono font-semibold">{{ nextFarmCheck }}</span>
+              <NTag v-if="quietFlags.farmQuiet" size="small" type="warning" :bordered="false">
+                {{ $t('page.farm.dashboard.quietLabel') }}
+              </NTag>
+              <span v-else class="font-mono font-semibold">{{ nextFarmCheck }}</span>
             </div>
             <div class="flex-y-center justify-between">
               <span>🤝 {{ $t('page.farm.dashboard.nextCheckHelp') }}</span>
-              <span class="font-mono font-semibold">{{ nextHelpCheck }}</span>
+              <NTag v-if="quietFlags.helpQuiet" size="small" type="warning" :bordered="false">
+                {{ $t('page.farm.dashboard.quietLabel') }}
+              </NTag>
+              <span v-else class="font-mono font-semibold">{{ nextHelpCheck }}</span>
             </div>
             <div class="flex-y-center justify-between">
               <span>🏃 {{ $t('page.farm.dashboard.nextCheckSteal') }}</span>
-              <span class="font-mono font-semibold">{{ nextStealCheck }}</span>
+              <NTag v-if="quietFlags.stealQuiet" size="small" type="warning" :bordered="false">
+                {{ $t('page.farm.dashboard.quietLabel') }}
+              </NTag>
+              <span v-else class="font-mono font-semibold">{{ nextStealCheck }}</span>
             </div>
           </div>
         </NCard>

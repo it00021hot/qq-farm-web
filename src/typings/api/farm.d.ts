@@ -208,6 +208,9 @@ declare namespace Api {
         friendRemainSec?: number;
         helpRemainSec?: number;
         stealRemainSec?: number;
+        farmQuiet?: boolean;
+        helpQuiet?: boolean;
+        stealQuiet?: boolean;
       };
       [key: string]: unknown;
     };
@@ -402,6 +405,9 @@ declare namespace Api {
       image?: string;
       category?: string;
       itemType?: number;
+      mutantTypes?: number[];
+      /** 变异效果名称（优先于 mutantTypes 展示） */
+      mutantEffects?: string[];
       sellable?: boolean;
       sellStatus?: string;
       sellCondition?: string;
@@ -443,6 +449,8 @@ declare namespace Api {
       accountId: number;
       count: number;
       ok: boolean;
+      /** 后端格式化的出售结果摘要（对齐 rust；缺省时前端回退本地文案） */
+      summary?: string;
     };
 
     type BagUseParams = {
@@ -456,6 +464,8 @@ declare namespace Api {
       itemId: number;
       count: number;
       ok: boolean;
+      /** 后端格式化的使用结果摘要（对齐 rust；缺省时前端回退本地文案） */
+      summary?: string;
     };
 
     type DailyGiftCard = {
@@ -567,7 +577,6 @@ declare namespace Api {
       wechatBot: Record<string, never>;
       title: string;
       msg: string;
-      offlineDeleteSec: number;
       endpoint?: string;
       token?: string;
       secret?: string;
@@ -738,6 +747,19 @@ declare namespace Api {
       value: number;
       label: string;
     };
+
+    type GameConfigSearchParams = CommonType.RecordNullable<
+      CommonSearchParams & {
+        keyword?: string;
+        seasons?: number;
+        rarity?: number;
+        itemType?: number;
+      }
+    >;
+
+    type GameConfigSeedList = Common.PaginatingQueryRecord<GameConfigSeed>;
+    type GameConfigFruitList = Common.PaginatingQueryRecord<GameConfigFruit>;
+    type GameConfigItemList = Common.PaginatingQueryRecord<GameConfigItem>;
 
     type GameConfigSeedWriteParams = {
       seedId: number;

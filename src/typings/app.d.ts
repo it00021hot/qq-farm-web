@@ -616,6 +616,7 @@ declare namespace App {
             nextCheckHelp: string;
             nextChecksTitle: string;
             checkingNow: string;
+            quietLabel: string;
             accountOffline: string;
             notLoggedIn: string;
             online: string;
@@ -679,58 +680,6 @@ declare namespace App {
             batchSell: string;
             batchSellSuccess: string;
             batchSellEmpty: string;
-            pet: {
-              title: string;
-              empty: string;
-              refresh: string;
-              none: string;
-              onDuty: string;
-              owned: string;
-              locked: string;
-              deploy: string;
-              deploySuccess: string;
-              withdraw: string;
-              withdrawSuccess: string;
-              protectRemaining: string;
-              protectMax: string;
-              activeDog: string;
-              giftPending: string;
-              giftClaim: string;
-              giftClaimed: string;
-              foodTitle: string;
-              foodEmpty: string;
-              foodStock: string;
-              foodUse: string;
-              foodSuccess: string;
-              dayUnit: string;
-              logTitle: string;
-              logFriend: string;
-              logTime: string;
-              logStolen: string;
-              logProtected: string;
-            };
-            illustrated: {
-              title: string;
-              empty: string;
-              cropTab: string;
-              mutantTab: string;
-              level: string;
-              unlocked: string;
-              locked: string;
-            };
-            interaction: {
-              title: string;
-              empty: string;
-              friendMode: string;
-              selfMode: string;
-              use: string;
-              landIds: string;
-              landIdsPlaceholder: string;
-              useSuccess: string;
-              useFailed: string;
-              sellableCount: string;
-              expireAt: string;
-            };
             pet: {
               title: string;
               empty: string;
@@ -1057,7 +1006,6 @@ declare namespace App {
             claimRewardsSuccess: string;
             exchangeableGoods: string;
             noClaimable: string;
-            noRewards: string;
             dailyClaims: string;
             passNodes: string;
             claimableNodes: string;
