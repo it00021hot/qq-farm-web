@@ -45,6 +45,7 @@ const EVENT_LABELS: Record<string, string> = {
   bad_action_limit: '放虫放草次数上限',
   heartbeat_timeout: '心跳超时',
   login: '登录',
+  account_status: '账号状态',
   disconnect_stop: '断开停止',
   kickout_stop: '踢下线',
   kickout: '被踢下线',
