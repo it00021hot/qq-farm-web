@@ -7,8 +7,8 @@ QQ 农场智能助手管理端：账号托管、自动化配置、个人农场/�
 基于 [SoybeanAdmin](https://github.com/soybeanjs/soybean-admin)（Vue 3 + Vite + TypeScript + Naive UI + UnoCSS）改造；业务页面在 `src/views/farm`。
 
 - 仓库：[github.com/it00021hot/qq-farm-web](https://github.com/it00021hot/qq-farm-web)
-- 配套后端：[`../qq-farm-core`](../qq-farm-core) · [GitHub](https://github.com/it00021hot/qq-farm-core)
-- 桌面嵌入构建：配合 [`../qq-farm-desktop`](../qq-farm-desktop) 使用 `pnpm build:desktop`
+- 配套后端：[qq-farm-core](https://github.com/it00021hot/qq-farm-core)
+- 桌面嵌入构建：作为 `frontend/` 子模块随 [qq-farm-desktop](https://github.com/it00021hot/qq-farm-desktop) 分发，`pnpm build:desktop` 产物（`dist/`）被桌面端 `go:embed`
 
 <span>中文 | <a href="./README.en_US.md">English</a></span>
 
